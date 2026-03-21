@@ -138,6 +138,5 @@ const orderSchema = new mongoose.Schema(
 // Index for queries
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
-orderSchema.index({ orderId: 1 });
 
 module.exports = mongoose.model('Order', orderSchema);

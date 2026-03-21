@@ -1,19 +1,31 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const { verifyToken } = require('../middleware/auth');
 const Order = require('../models/Order');
-const Razorpay = require('razorpay');
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+// Lazily initialise Razorpay only when keys are configured
+const getRazorpay = () => {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        return null;
+    }
+    const Razorpay = require('razorpay');
+    return new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+};
 
 // ============================================
 // POST /api/payments/razorpay/create
 // ============================================
 router.post('/razorpay/create', verifyToken, async (req, res) => {
     try {
+        const razorpay = getRazorpay();
+        if (!razorpay) {
+            return res.status(503).json({ success: false, message: 'Razorpay is not configured' });
+        }
+
         const { orderId, amount } = req.body;
 
         const options = {
@@ -43,10 +55,13 @@ router.post('/razorpay/create', verifyToken, async (req, res) => {
 // ============================================
 router.post('/razorpay/verify', verifyToken, async (req, res) => {
     try {
+        if (!process.env.RAZORPAY_KEY_SECRET) {
+            return res.status(503).json({ success: false, message: 'Razorpay is not configured' });
+        }
+
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
 
         // Verify signature
-        const crypto = require('crypto');
         const body = razorpay_order_id + '|' + razorpay_payment_id;
         const expectedSignature = crypto
             .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
@@ -62,6 +77,10 @@ router.post('/razorpay/verify', verifyToken, async (req, res) => {
 
         // Update order payment status
         const order = await Order.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
         order.payment.razorpayPaymentId = razorpay_payment_id;
         order.payment.razorpayOrderId = razorpay_order_id;
         order.payment.status = 'completed';

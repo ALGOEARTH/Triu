@@ -136,7 +136,19 @@ class AppStore {
                     'Natural Products': '🌿',
                     'Stationery': '📓',
                     'Worksheets': '📚',
-                    'Other': '🛒'
+                    'Electronics': '💻',
+                    'Fashion': '👗',
+                    'Home & Kitchen': '🏠',
+                    'Books': '📖',
+                    'Toys & Games': '🎮',
+                    'Health & Beauty': '💊',
+                    'Sports & Outdoors': '⚽',
+                    'Grocery': '🛒',
+                    'Automotive': '🚗',
+                    'Art & Crafts': '🎨',
+                    'Baby Products': '🍼',
+                    'Office Supplies': '🖊',
+                    'Other': '📦'
                 };
 
                 return {

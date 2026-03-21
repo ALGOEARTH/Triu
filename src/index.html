@@ -85,6 +85,9 @@
           <button @click="scrollTo('collections')" class="hover:text-slate-50 transition-colors">Collections</button>
           <button @click="scrollTo('shop')" class="hover:text-slate-50 transition-colors">Catalogue</button>
           <button @click="scrollTo('about')" class="hover:text-slate-50 transition-colors">About</button>
+          <template x-if="store.user?.role === 'admin'">
+            <a href="admin.html" class="hover:text-goldSoft transition-colors font-semibold">Admin Panel</a>
+          </template>
         </div>
 
         <!-- Right -->

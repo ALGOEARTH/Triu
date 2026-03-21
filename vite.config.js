@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
+import { resolve } from 'path'
 
 export default defineConfig({
+  root: 'src',
   server: {
     port: 5173,
     open: true,
@@ -12,9 +14,16 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: '../dist',
+    emptyOutDir: true,
     sourcemap: false,
-    minify: 'terser'
+    minify: 'esbuild',
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'src/index.html'),
+        admin: resolve(__dirname, 'src/admin.html')
+      }
+    }
   },
   preview: {
     port: 4173

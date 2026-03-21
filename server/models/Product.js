@@ -25,7 +25,24 @@ const productSchema = new mongoose.Schema(
         category: {
             type: String,
             required: [true, 'Category is required'],
-            enum: ['Natural Products', 'Stationery', 'Worksheets', 'Other']
+            enum: [
+                'Natural Products',
+                'Stationery',
+                'Worksheets',
+                'Electronics',
+                'Fashion',
+                'Home & Kitchen',
+                'Books',
+                'Toys & Games',
+                'Health & Beauty',
+                'Sports & Outdoors',
+                'Grocery',
+                'Automotive',
+                'Art & Crafts',
+                'Baby Products',
+                'Office Supplies',
+                'Other'
+            ]
         },
         subcategory: String,
         
