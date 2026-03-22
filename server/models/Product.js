@@ -126,7 +126,10 @@ const productSchema = new mongoose.Schema(
 );
 
 // Index for search
-productSchema.index({ name: 'text', description: 'text' });
+productSchema.index(
+    { name: 'text', description: 'text' },
+    { weights: { name: 10, description: 5 }, name: 'product_text_index' }
+);
 productSchema.index({ category: 1, status: 1 });
 productSchema.index({ sellerId: 1, status: 1 });
 

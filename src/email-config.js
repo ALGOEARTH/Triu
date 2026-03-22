@@ -5,12 +5,12 @@
 // ✅ UPDATED email-config.js - ENV-Ready (Static + Vercel/Vite)
 
 const EMAILJS_CONFIG = {
-    // ✅ AUTO from environment (Vercel/Vite) or fallback
-    publicKey: import.meta.env?.EMAILJS_PUBLIC_KEY || 'D1SnQI53Ye-_MeDVo',
+    // Read from environment – no hardcoded fallbacks for security
+    publicKey: import.meta.env?.EMAILJS_PUBLIC_KEY || '',
     
-    serviceId: import.meta.env?.EMAILJS_SERVICE_ID || 'service_0rmbq15',
+    serviceId: import.meta.env?.EMAILJS_SERVICE_ID || '',
     
-    templateId: import.meta.env?.EMAILJS_TEMPLATE_ID || 'template_n4rs1ms'
+    templateId: import.meta.env?.EMAILJS_TEMPLATE_ID || ''
 };
 
 // ✅ Validate config (production safety)
@@ -29,7 +29,9 @@ function validateConfig() {
 
 // EmailJS Initialize
 validateConfig();
-emailjs.init(EMAILJS_CONFIG.publicKey);
+if (EMAILJS_CONFIG.publicKey) {
+    emailjs.init(EMAILJS_CONFIG.publicKey);
+}
 
 
 // ============================================
@@ -152,9 +154,3 @@ window.EmailManager = {
     generateOrderSummary,
     calculateOrderTotals
 };
-
-// Error-free validation
-console.log('✅ EmailJS Config Loaded');
-console.log('📧 Service ID:', EMAILJS_CONFIG.serviceId ? 'SET' : '🚨 MISSING');
-console.log('📧 Template ID:', EMAILJS_CONFIG.templateId ? 'SET' : '🚨 MISSING');
-console.log('🔑 Public Key:', EMAILJS_CONFIG.publicKey ? 'SET' : '🚨 MISSING');

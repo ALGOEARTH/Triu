@@ -147,7 +147,9 @@ router.post('/wishlist/:productId', verifyToken, async (req, res) => {
 router.get('/orders', verifyToken, async (req, res) => {
     try {
         const { status, page = 1, limit = 10 } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+        const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const skip = (parsedPage - 1) * parsedLimit;
 
         const query = { userId: req.user.id };
         if (status) query.status = status;
@@ -156,7 +158,7 @@ router.get('/orders', verifyToken, async (req, res) => {
             Order.find(query)
                 .sort({ createdAt: -1 })
                 .skip(skip)
-                .limit(parseInt(limit))
+                .limit(parsedLimit)
                 .populate('items.productId', 'name thumbnail')
                 .lean(),
             Order.countDocuments(query)
@@ -165,7 +167,7 @@ router.get('/orders', verifyToken, async (req, res) => {
         res.json({
             success: true,
             data: orders,
-            pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) }
+            pagination: { total, page: parsedPage, limit: parsedLimit, pages: Math.ceil(total / parsedLimit) }
         });
     } catch (error) {
         console.error('❌ User orders error:', error);

@@ -5,6 +5,9 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 
+// Escape special regex characters to prevent ReDoS from user input
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // ============================================
 // GET /api/admin/dashboard  –  Business Overview
 // ============================================
@@ -162,15 +165,18 @@ router.get('/sales', verifyToken, verifyAdmin, async (req, res) => {
 router.get('/orders', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const { status, page = 1, limit = 20, search } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+        const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+        const skip = (parsedPage - 1) * parsedLimit;
 
         const query = {};
         if (status) query.status = status;
         if (search) {
+            const safeSearch = escapeRegex(search);
             query.$or = [
-                { orderId: { $regex: search, $options: 'i' } },
-                { customerName: { $regex: search, $options: 'i' } },
-                { customerEmail: { $regex: search, $options: 'i' } }
+                { orderId: { $regex: safeSearch, $options: 'i' } },
+                { customerName: { $regex: safeSearch, $options: 'i' } },
+                { customerEmail: { $regex: safeSearch, $options: 'i' } }
             ];
         }
 
@@ -178,7 +184,7 @@ router.get('/orders', verifyToken, verifyAdmin, async (req, res) => {
             Order.find(query)
                 .sort({ createdAt: -1 })
                 .skip(skip)
-                .limit(parseInt(limit))
+                .limit(parsedLimit)
                 .populate('userId', 'name email phone')
                 .lean(),
             Order.countDocuments(query)
@@ -187,7 +193,7 @@ router.get('/orders', verifyToken, verifyAdmin, async (req, res) => {
         res.json({
             success: true,
             data: orders,
-            pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) }
+            pagination: { total, page: parsedPage, limit: parsedLimit, pages: Math.ceil(total / parsedLimit) }
         });
     } catch (error) {
         console.error('❌ Admin orders error:', error);
@@ -233,16 +239,19 @@ router.put('/orders/:id/status', verifyToken, verifyAdmin, async (req, res) => {
 router.get('/users', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const { role, status, search, page = 1, limit = 20 } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+        const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+        const skip = (parsedPage - 1) * parsedLimit;
 
         const query = {};
         if (role) query.role = role;
         if (status) query.status = status;
         if (search) {
+            const safeSearch = escapeRegex(search);
             query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } }
+                { name: { $regex: safeSearch, $options: 'i' } },
+                { email: { $regex: safeSearch, $options: 'i' } },
+                { phone: { $regex: safeSearch, $options: 'i' } }
             ];
         }
 
@@ -250,7 +259,7 @@ router.get('/users', verifyToken, verifyAdmin, async (req, res) => {
             User.find(query)
                 .sort({ createdAt: -1 })
                 .skip(skip)
-                .limit(parseInt(limit))
+                .limit(parsedLimit)
                 .select('-password -safeKeyHash')
                 .lean(),
             User.countDocuments(query)
@@ -273,7 +282,7 @@ router.get('/users', verifyToken, verifyAdmin, async (req, res) => {
         res.json({
             success: true,
             data: enrichedUsers,
-            pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) }
+            pagination: { total, page: parsedPage, limit: parsedLimit, pages: Math.ceil(total / parsedLimit) }
         });
     } catch (error) {
         console.error('❌ Admin users error:', error);
@@ -326,7 +335,9 @@ router.get('/sellers/pending', verifyToken, verifyAdmin, async (req, res) => {
 router.get('/sellers', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const { status, page = 1, limit = 20 } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+        const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+        const skip = (parsedPage - 1) * parsedLimit;
 
         const query = { role: 'seller' };
         if (status) query['seller.status'] = status;
@@ -335,7 +346,7 @@ router.get('/sellers', verifyToken, verifyAdmin, async (req, res) => {
             User.find(query)
                 .sort({ createdAt: -1 })
                 .skip(skip)
-                .limit(parseInt(limit))
+                .limit(parsedLimit)
                 .select('-password -safeKeyHash')
                 .lean(),
             User.countDocuments(query)
@@ -370,7 +381,7 @@ router.get('/sellers', verifyToken, verifyAdmin, async (req, res) => {
         res.json({
             success: true,
             data: enriched,
-            pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) }
+            pagination: { total, page: parsedPage, limit: parsedLimit, pages: Math.ceil(total / parsedLimit) }
         });
     } catch (error) {
         console.error('❌ Admin sellers error:', error);
@@ -445,15 +456,18 @@ router.put('/sellers/:id/suspend', verifyToken, verifyAdmin, async (req, res) =>
 router.get('/products', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const { status, category, page = 1, limit = 20, search } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+        const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+        const skip = (parsedPage - 1) * parsedLimit;
 
         const query = {};
         if (status) query.status = status;
         if (category) query.category = category;
         if (search) {
+            const safeSearch = escapeRegex(search);
             query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } }
+                { name: { $regex: safeSearch, $options: 'i' } },
+                { description: { $regex: safeSearch, $options: 'i' } }
             ];
         }
 
@@ -461,7 +475,7 @@ router.get('/products', verifyToken, verifyAdmin, async (req, res) => {
             Product.find(query)
                 .sort({ createdAt: -1 })
                 .skip(skip)
-                .limit(parseInt(limit))
+                .limit(parsedLimit)
                 .populate('sellerId', 'name seller.businessName')
                 .lean(),
             Product.countDocuments(query)
@@ -470,7 +484,7 @@ router.get('/products', verifyToken, verifyAdmin, async (req, res) => {
         res.json({
             success: true,
             data: products,
-            pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) }
+            pagination: { total, page: parsedPage, limit: parsedLimit, pages: Math.ceil(total / parsedLimit) }
         });
     } catch (error) {
         console.error('❌ Admin products error:', error);
