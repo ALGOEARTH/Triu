@@ -19,15 +19,21 @@ function copyPlainJsPlugin() {
       const srcDir = resolve(__dirname, 'src')
 
       for (const file of jsFiles) {
-        let src = readFileSync(resolve(srcDir, file), 'utf-8')
+        let src
+        try {
+          src = readFileSync(resolve(srcDir, file), 'utf-8')
+        } catch (err) {
+          console.warn(`[copy-plain-js] Skipping ${file}: ${err.message}`)
+          continue
+        }
 
         // Replace import.meta.env references so the files work outside Vite's
         // module bundler (they are loaded as plain <script> tags).
         const apiUrl = process.env.VITE_API_URL || 'http://localhost:5000/api'
         const rzpKey = process.env.VITE_RAZORPAY_KEY_ID || ''
-        const ejsKey = process.env.VITE_EMAILJS_PUBLIC_KEY || process.env.EMAILJS_PUBLIC_KEY || 'D1SnQI53Ye-_MeDVo'
-        const ejsSvc = process.env.VITE_EMAILJS_SERVICE_ID || process.env.EMAILJS_SERVICE_ID || 'service_0rmbq15'
-        const ejsTpl = process.env.VITE_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || 'template_n4rs1ms'
+        const ejsKey = process.env.VITE_EMAILJS_PUBLIC_KEY || process.env.EMAILJS_PUBLIC_KEY || ''
+        const ejsSvc = process.env.VITE_EMAILJS_SERVICE_ID || process.env.EMAILJS_SERVICE_ID || ''
+        const ejsTpl = process.env.VITE_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || ''
 
         src = src
           .replace(/import\.meta\.env\??\.VITE_API_URL/g, JSON.stringify(apiUrl))

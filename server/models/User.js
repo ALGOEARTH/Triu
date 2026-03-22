@@ -120,6 +120,7 @@ userSchema.methods.matchPassword = async function(enteredPassword) {
 userSchema.methods.toJSON = function() {
     const obj = this.toObject();
     delete obj.password;
+    delete obj.safeKeyHash;
     return obj;
 };
 

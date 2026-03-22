@@ -4,16 +4,20 @@ const crypto = require('crypto');
 const { verifyToken } = require('../middleware/auth');
 const Order = require('../models/Order');
 
-// Lazily initialise Razorpay only when keys are configured
+// Cache a single Razorpay instance once keys are available
+let _razorpayInstance = null;
 const getRazorpay = () => {
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
         return null;
     }
-    const Razorpay = require('razorpay');
-    return new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID,
-        key_secret: process.env.RAZORPAY_KEY_SECRET
-    });
+    if (!_razorpayInstance) {
+        const Razorpay = require('razorpay');
+        _razorpayInstance = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET
+        });
+    }
+    return _razorpayInstance;
 };
 
 // ============================================

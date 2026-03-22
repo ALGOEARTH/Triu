@@ -79,8 +79,8 @@ router.post('/', verifyToken, async (req, res) => {
         const discount = subtotal > 1000 ? Math.floor(subtotal * 0.05) : 0;
         const total = subtotal + shipping - discount;
 
-        // Generate order ID
-        const orderId = 'ORD' + Date.now().toString().slice(-6);
+        // Generate a collision-resistant order ID using UUID (crypto-strong)
+        const orderId = 'ORD' + uuidv4().replace(/-/g, '').slice(0, 12).toUpperCase();
 
         // Create order
         const order = await Order.create({

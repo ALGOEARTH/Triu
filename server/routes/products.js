@@ -1,7 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
+const User = require('../models/User');
+const Order = require('../models/Order');
 const { verifyToken } = require('../middleware/auth');
+
+// Escape special regex characters to prevent ReDoS from user input
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // ============================================
 // GET /api/products
@@ -9,6 +14,8 @@ const { verifyToken } = require('../middleware/auth');
 router.get('/', async (req, res) => {
     try {
         const { category, search, sortBy, limit = 12, page = 1 } = req.query;
+        const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+        const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 12));
 
         let query = { status: 'active' };
 
@@ -19,9 +26,10 @@ router.get('/', async (req, res) => {
 
         // Search
         if (search) {
+            const safeSearch = escapeRegex(search);
             query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } }
+                { name: { $regex: safeSearch, $options: 'i' } },
+                { description: { $regex: safeSearch, $options: 'i' } }
             ];
         }
 
@@ -33,12 +41,12 @@ router.get('/', async (req, res) => {
         if (sortBy === 'newest') sortOptions = { createdAt: -1 };
 
         // Pagination
-        const skip = (page - 1) * limit;
+        const skip = (parsedPage - 1) * parsedLimit;
 
         // Execute query
         const products = await Product.find(query)
             .sort(sortOptions)
-            .limit(parseInt(limit))
+            .limit(parsedLimit)
             .skip(skip)
             .populate('sellerId', 'seller name');
 
@@ -49,9 +57,9 @@ router.get('/', async (req, res) => {
             data: products,
             pagination: {
                 total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(total / limit)
+                page: parsedPage,
+                limit: parsedLimit,
+                pages: Math.ceil(total / parsedLimit)
             }
         });
     } catch (error) {
@@ -101,8 +109,8 @@ router.post('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Verify seller
-        const user = await require('../models/User').findById(userId);
-        if (user.role !== 'seller' || !user.seller.verified) {
+        const user = await User.findById(userId);
+        if (!user || user.role !== 'seller' || !user.seller?.verified) {
             return res.status(403).json({
                 success: false,
                 message: 'Only verified sellers can add products'
@@ -249,7 +257,6 @@ router.post('/:id/reviews', verifyToken, async (req, res) => {
         }
 
         // Check if user has ordered this product (verified purchase)
-        const Order = require('../models/Order');
         const purchasedOrder = await Order.findOne({
             userId,
             'items.productId': product._id,

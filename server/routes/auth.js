@@ -258,10 +258,15 @@ router.post('/verify-otp', async (req, res) => {
         if (!user) {
             // Create a minimal placeholder user; they can complete profile later
             const randomPassword = crypto.randomBytes(16).toString('hex');
+            const isEmailIdentifier = validateEmail(identifier);
+            // Build a guaranteed-valid placeholder email using a hex hash of the identifier
+            const placeholderEmail = isEmailIdentifier
+                ? identifier
+                : `otp_${crypto.createHash('sha1').update(identifier).digest('hex').slice(0, 12)}@placeholder.local`;
             user = await User.create({
                 name: 'New User',
-                email: validateEmail(identifier) ? identifier : `${identifier}@placeholder.local`,
-                phone: !validateEmail(identifier) ? identifier : 'N/A',
+                email: placeholderEmail,
+                phone: !isEmailIdentifier ? identifier : '0000000',
                 password: randomPassword
             });
         }
@@ -408,10 +413,10 @@ router.post('/refresh-token', (req, res) => {
             token: newToken
         });
     } catch (error) {
-        console.error('❌ Refresh token error:', error);
+        const isExpired = error.name === 'TokenExpiredError';
         return res.status(401).json({
             success: false,
-            message: 'Invalid or expired token'
+            message: isExpired ? 'Session expired, please log in again' : 'Invalid token'
         });
     }
 });
