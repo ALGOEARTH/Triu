@@ -39,6 +39,20 @@ class AppStore {
                     orders: false,
                     seller: false,
                     admin: false
+                },
+                bookkeeping: {
+                    totalRevenue: 89450,
+                    commissionsPaid: 16820,
+                    netEarnings: 70920,
+                    tdsDeducted: 1789,
+                    monthly: [
+                        { month: 'Aug 2024', orders: 23, revenue: 12400, commission: 2480, tds: 310, net: 9610 },
+                        { month: 'Sep 2024', orders: 31, revenue: 16200, commission: 3240, tds: 405, net: 12555 },
+                        { month: 'Oct 2024', orders: 28, revenue: 14800, commission: 2960, tds: 370, net: 11470 },
+                        { month: 'Nov 2024', orders: 35, revenue: 18500, commission: 3700, tds: 462, net: 14338 },
+                        { month: 'Dec 2024', orders: 42, revenue: 22100, commission: 4420, tds: 552, net: 17128 },
+                        { month: 'Jan 2025', orders: 19, revenue: 5450,  commission: 1020, tds: 136, net: 4294  }
+                    ]
                 }
             },
             
@@ -944,7 +958,177 @@ class AppStore {
 const store = new AppStore();
 
 // ============================================
-// 3. ALPINE.JS APP INITIALIZATION
+// 3. SELLER ONBOARDING WIZARD (Alpine x-data)
+// ============================================
+window.sellerWizard = function() {
+    return {
+        step: 1,
+        totalSteps: 7,
+        errors: {},
+        stepTitles: [
+            'Personal Details',
+            'Business Details',
+            'Bank Account Setup',
+            'Document Upload',
+            'First Product Listing',
+            'Seller Agreement',
+            'Review & Submit'
+        ],
+        form: {
+            // Step 1
+            fullName: '', phone: '', email: '', city: '', state: '', pincode: '',
+            // Step 2
+            businessName: '', businessType: 'Individual', gst: '', pan: '', tagline: '',
+            // Step 3
+            accountHolderName: '', bankName: '', accountNumber: '', confirmAccountNumber: '', ifscCode: '', accountType: 'Savings',
+            // Step 4
+            profilePhotoUrl: '', aadhaarNumber: '', uploadDeclaration: false, govtIdType: 'Aadhaar', govtIdNumber: '',
+            // Step 5
+            productName: '', productCategory: 'Natural Products', productPrice: '', productStock: '', productDescription: '', productImageUrl: '',
+            // Step 6
+            acceptedTerms: false
+        },
+
+        closeModal() {
+            window.store.closeModal('seller');
+        },
+
+        validate() {
+            this.errors = {};
+            const f = this.form;
+            if (this.step === 1) {
+                if (!f.fullName.trim()) this.errors.fullName = 'Full name is required';
+                if (!f.phone.trim() || !/^\d{10}$/.test(f.phone.trim())) this.errors.phone = 'Valid 10-digit phone required';
+                if (!f.email.trim() || !/\S+@\S+\.\S+/.test(f.email)) this.errors.email = 'Valid email required';
+                if (!f.city.trim()) this.errors.city = 'City is required';
+                if (!f.state.trim()) this.errors.state = 'State is required';
+                if (!f.pincode.trim() || !/^\d{6}$/.test(f.pincode)) this.errors.pincode = 'Valid 6-digit pincode required';
+            } else if (this.step === 2) {
+                if (!f.businessName.trim()) this.errors.businessName = 'Business name is required';
+                if (!f.pan.trim() || !/^[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}$/.test(f.pan)) this.errors.pan = 'Valid PAN required (e.g. ABCDE1234F)';
+            } else if (this.step === 3) {
+                if (!f.accountHolderName.trim()) this.errors.accountHolderName = 'Account holder name is required';
+                if (!f.bankName.trim()) this.errors.bankName = 'Bank name is required';
+                if (!f.accountNumber.trim()) this.errors.accountNumber = 'Account number is required';
+                if (f.accountNumber !== f.confirmAccountNumber) this.errors.confirmAccountNumber = 'Account numbers do not match';
+                if (!f.ifscCode.trim() || !/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/.test(f.ifscCode)) this.errors.ifscCode = 'Valid IFSC code required (e.g. SBIN0001234)';
+            } else if (this.step === 4) {
+                if (!f.aadhaarNumber.trim() || !/^\d{12}$/.test(f.aadhaarNumber)) this.errors.aadhaarNumber = 'Valid 12-digit Aadhaar number required';
+                if (!f.uploadDeclaration) this.errors.uploadDeclaration = 'You must accept the document declaration';
+                if (!f.govtIdNumber.trim()) this.errors.govtIdNumber = 'Government ID number is required';
+            } else if (this.step === 5) {
+                if (!f.productName.trim()) this.errors.productName = 'Product name is required';
+                if (!f.productPrice || isNaN(f.productPrice) || Number(f.productPrice) <= 0) this.errors.productPrice = 'Valid price required';
+                if (f.productStock === '' || isNaN(f.productStock) || Number(f.productStock) < 0) this.errors.productStock = 'Valid stock quantity required';
+                if (!f.productDescription.trim()) this.errors.productDescription = 'Short description is required';
+            } else if (this.step === 6) {
+                if (!f.acceptedTerms) this.errors.acceptedTerms = 'You must accept the seller agreement';
+            }
+            return Object.keys(this.errors).length === 0;
+        },
+
+        nextStep() {
+            if (this.validate()) this.step++;
+        },
+
+        prevStep() {
+            if (this.step > 1) this.step--;
+        },
+
+        async submit() {
+            if (!this.validate()) return;
+            await window.handleSellerApplicationWizard(this.form);
+        }
+    };
+};
+
+// ============================================
+// 3b. SELLER DASHBOARD (Alpine x-data)
+// ============================================
+window.sellerDashboard = function() {
+    return {
+        sellerTab: 'overview',
+        showAddProductForm: false,
+        newProduct: { name: '', category: 'Natural Products', price: '', mrp: '', stock: '', description: '', thumbnail: '', weight: '', brand: '' },
+
+        products: [
+            { _id: 'p1', name: 'Organic Turmeric Powder', category: 'Natural Products', price: 299, mrp: 399, stock: 124, status: 'active', sales: 567 },
+            { _id: 'p2', name: 'Ashwagandha Root Powder',  category: 'Natural Products', price: 499, mrp: 599, stock: 76,  status: 'active', sales: 345 }
+        ],
+
+        orders: [
+            { id: 'ORD-0191', customer: 'Priya Sharma',  product: 'Organic Turmeric Powder', qty: 2, amount: 598, status: 'shipped',   date: '2025-01-15' },
+            { id: 'ORD-0192', customer: 'Rahul Kumar',   product: 'Ashwagandha Root Powder',  qty: 1, amount: 499, status: 'pending',   date: '2025-01-16' },
+            { id: 'ORD-0193', customer: 'Anita Singh',   product: 'Organic Turmeric Powder', qty: 3, amount: 897, status: 'delivered',  date: '2025-01-10' }
+        ],
+
+        payouts: {
+            balanceDue: 4230,
+            history: [
+                { date: '2025-01-01', amount: 8450, status: 'paid',       utr: 'UTR234567890' },
+                { date: '2024-12-01', amount: 6200, status: 'paid',       utr: 'UTR123456789' },
+                { date: '2024-11-01', amount: 5100, status: 'paid',       utr: 'UTR112345678' }
+            ]
+        },
+
+        analytics: { views: 4820, conversionRate: '3.2%', avgOrderValue: 674, topProduct: 'Organic Turmeric Powder' },
+
+        kpis: { totalRevenue: 89450, totalOrders: 178, totalProducts: 8, thisMonthEarnings: 12300 },
+
+        async saveNewProduct() {
+            if (!this.newProduct.name || !this.newProduct.price || this.newProduct.stock === '') {
+                if (window.Toast) Toast.show('Please fill required fields', 'error');
+                return;
+            }
+            const entry = {
+                _id: String(Date.now()),
+                name: this.newProduct.name,
+                category: this.newProduct.category,
+                price: Number(this.newProduct.price),
+                mrp: Number(this.newProduct.mrp) || Number(this.newProduct.price),
+                stock: Number(this.newProduct.stock),
+                description: this.newProduct.description,
+                thumbnail: this.newProduct.thumbnail,
+                status: 'active',
+                sales: 0
+            };
+            try {
+                await window.api?.createProduct({ ...entry, brand: this.newProduct.brand, weight: this.newProduct.weight });
+            } catch (e) { /* optimistic */ }
+            this.products.unshift(entry);
+            this.newProduct = { name: '', category: 'Natural Products', price: '', mrp: '', stock: '', description: '', thumbnail: '', weight: '', brand: '' };
+            this.showAddProductForm = false;
+            this.kpis.totalProducts++;
+            if (window.Toast) Toast.show('✅ Product added!', 'success');
+        },
+
+        toggleProductStatus(productId) {
+            const p = this.products.find(p => p._id === productId);
+            if (p) p.status = p.status === 'active' ? 'inactive' : 'active';
+        },
+
+        deleteProduct(productId) {
+            this.products = this.products.filter(p => p._id !== productId);
+            this.kpis.totalProducts = Math.max(0, this.kpis.totalProducts - 1);
+            if (window.Toast) Toast.show('Product removed', 'info');
+        },
+
+        updateOrderStatus(orderId, newStatus) {
+            const o = this.orders.find(o => o.id === orderId);
+            if (o) o.status = newStatus;
+        },
+
+        async requestPayout() {
+            if (this.payouts.balanceDue <= 0) { if (window.Toast) Toast.show('No balance due', 'info'); return; }
+            this.payouts.history.unshift({ date: new Date().toISOString().split('T')[0], amount: this.payouts.balanceDue, status: 'processing', utr: '–' });
+            this.payouts.balanceDue = 0;
+            if (window.Toast) Toast.show('Payout request submitted! Processing in 3–5 business days.', 'success');
+        }
+    };
+};
+
+// ============================================
+// 4. ALPINE.JS APP INITIALIZATION
 // ============================================
 function appData() {
     return {
@@ -1180,5 +1364,21 @@ if ('serviceWorker' in navigator) {
 window.AppStore = AppStore;
 window.store = store;
 window.appData = appData;
+
+window.downloadBookkeepingCSV = function() {
+    const bk = window.store?.state?.account?.bookkeeping;
+    if (!bk) return;
+    const header = 'Month,Orders,Revenue,Commission,TDS,Net\n';
+    const rows = bk.monthly.map(r =>
+        `${r.month},${r.orders},${r.revenue},${r.commission},${r.tds},${r.net}`
+    ).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bookkeeping-summary.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+};
 
 console.log('🚀 App.js loaded successfully');

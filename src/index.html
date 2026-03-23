@@ -678,62 +678,356 @@
             </div>
           </div>
 
-          <!-- Seller dashboard (skeleton) -->
-          <div x-show="store.account.view === 'seller'" class="space-y-3 text-[11px]">
-            <div class="flex items-center justify-between">
-              <div class="text-slate-200 font-medium">Seller dashboard</div>
-              <button @click="loadSellerDashboard()" class="text-[11px] text-slate-400 hover:text-slate-100">
-                Refresh
-              </button>
-            </div>
+          <!-- Seller dashboard -->
+          <div x-show="store.account.view === 'seller'" class="space-y-3 text-[11px]" x-data="sellerDashboard()">
             <template x-if="store.user?.role !== 'seller'">
               <div class="text-slate-400">
                 You are not yet a seller. Submit a seller application from the Partner access button in the header.
               </div>
             </template>
+
             <template x-if="store.user?.role === 'seller'">
               <div class="space-y-3">
-                <div class="card-dark p-4 space-y-1">
-                  <div class="text-[10px] uppercase tracking-[0.18em] text-slate-400">Storefront</div>
-                  <div class="text-slate-200" x-text="store.user?.seller?.businessName || 'Your brand name'"></div>
-                  <div class="text-[11px] text-slate-400" x-text="store.user?.seller?.description"></div>
+
+                <!-- Sub-tab bar -->
+                <div class="inline-flex items-center gap-1 rounded-full bg-black/60 border border-[#111827] p-1 text-[10px] flex-wrap">
+                  <template x-for="tab in ['overview','products','orders','payouts','analytics']" :key="tab">
+                    <button
+                      @click="sellerTab = tab"
+                      :class="['px-3 py-1.5 rounded-full capitalize transition', sellerTab === tab ? 'bg-slate-100 text-ink-900 font-semibold' : 'text-slate-300 hover:text-slate-100']"
+                      x-text="tab === 'products' ? 'My Products' : tab.charAt(0).toUpperCase() + tab.slice(1)">
+                    </button>
+                  </template>
                 </div>
-                <div class="space-y-2">
-                  <div class="text-slate-200">Products</div>
-                  <template x-if="store.account.loading.seller">
-                    <div class="text-slate-400">Loading your products…</div>
-                  </template>
-                  <template x-if="!store.account.loading.seller && store.account.sellerProducts.length === 0">
-                    <div class="text-slate-400">
-                      No products yet. Once created via the backend/admin tools, they will appear here with basic stats.
+
+                <!-- ── Overview ── -->
+                <div x-show="sellerTab === 'overview'" class="space-y-3">
+                  <!-- KPI grid -->
+                  <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div class="card-dark p-3">
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Revenue</div>
+                      <div class="text-base font-semibold text-slate-50 mt-0.5" x-text="'₹' + kpis.totalRevenue.toLocaleString('en-IN')"></div>
                     </div>
-                  </template>
-                  <div class="grid gap-2 md:grid-cols-2" x-show="!store.account.loading.seller && store.account.sellerProducts.length > 0">
-                    <template x-for="product in store.account.sellerProducts" :key="product._id">
-                      <div class="card-dark p-3 flex flex-col gap-1">
-                        <div class="flex items-center justify-between">
-                          <div class="text-[12px] text-slate-100 line-clamp-1" x-text="product.name"></div>
-                          <div class="text-[11px] text-slate-300" x-text="'₹' + product.price.toLocaleString('en-IN')"></div>
-                        </div>
-                        <div class="flex items-center justify-between text-[10px] text-slate-400">
-                          <span>Stock: <span x-text="product.stock"></span></span>
-                          <span>Sales: <span x-text="product.sales"></span></span>
-                        </div>
-                      </div>
-                    </template>
+                    <div class="card-dark p-3">
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Orders</div>
+                      <div class="text-base font-semibold text-slate-50 mt-0.5" x-text="kpis.totalOrders"></div>
+                    </div>
+                    <div class="card-dark p-3">
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Products</div>
+                      <div class="text-base font-semibold text-slate-50 mt-0.5" x-text="kpis.totalProducts"></div>
+                    </div>
+                    <div class="card-dark p-3">
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">This Month</div>
+                      <div class="text-base font-semibold text-emeraldSoft mt-0.5" x-text="'₹' + kpis.thisMonthEarnings.toLocaleString('en-IN')"></div>
+                    </div>
+                  </div>
+                  <!-- Seller status & profile -->
+                  <div class="card-dark p-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <div class="text-[10px] uppercase tracking-[0.18em] text-slate-400">Storefront</div>
+                      <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emeraldCore/20 text-emeraldSoft border border-emeraldCore/40">
+                        ✓ Active Seller
+                      </span>
+                    </div>
+                    <div class="text-slate-200 font-medium" x-text="store.user?.seller?.businessName || 'Your Brand'"></div>
+                    <div class="text-[11px] text-slate-400" x-text="store.user?.seller?.description || 'Add a description from your profile settings.'"></div>
                   </div>
                 </div>
+
+                <!-- ── My Products ── -->
+                <div x-show="sellerTab === 'products'" class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div class="text-slate-200 font-medium">My Products (<span x-text="products.length"></span>)</div>
+                    <button @click="showAddProductForm = !showAddProductForm" class="btn btn-primary text-[10px] px-3 py-1">
+                      <span x-text="showAddProductForm ? '✕ Cancel' : '+ Add Product'"></span>
+                    </button>
+                  </div>
+
+                  <!-- Inline Add Product form -->
+                  <div x-show="showAddProductForm" class="card-dark p-4 space-y-3">
+                    <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">New Product</div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Name *</label>
+                        <input x-model="newProduct.name" type="text" placeholder="Product name"
+                               class="rounded-full border border-[#374151] bg-black/70 px-3 py-1.5 text-[11px] text-slate-100 w-full" />
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Category *</label>
+                        <select x-model="newProduct.category"
+                                class="rounded-full border border-[#374151] bg-black/70 px-3 py-1.5 text-[11px] text-slate-100 w-full">
+                          <option>Natural Products</option><option>Stationery</option><option>Worksheets</option>
+                          <option>Electronics</option><option>Fashion</option><option>Home &amp; Kitchen</option>
+                          <option>Books</option><option>Art &amp; Crafts</option><option>Health &amp; Beauty</option><option>Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Price ₹ *</label>
+                        <input x-model="newProduct.price" type="number" placeholder="0" min="0"
+                               class="rounded-full border border-[#374151] bg-black/70 px-3 py-1.5 text-[11px] text-slate-100 w-full" />
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">MRP ₹</label>
+                        <input x-model="newProduct.mrp" type="number" placeholder="0" min="0"
+                               class="rounded-full border border-[#374151] bg-black/70 px-3 py-1.5 text-[11px] text-slate-100 w-full" />
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Stock *</label>
+                        <input x-model="newProduct.stock" type="number" placeholder="0" min="0"
+                               class="rounded-full border border-[#374151] bg-black/70 px-3 py-1.5 text-[11px] text-slate-100 w-full" />
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Brand</label>
+                        <input x-model="newProduct.brand" type="text" placeholder="Brand name"
+                               class="rounded-full border border-[#374151] bg-black/70 px-3 py-1.5 text-[11px] text-slate-100 w-full" />
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] text-slate-400 mb-1">Description</label>
+                      <textarea x-model="newProduct.description" rows="2" placeholder="Short description…"
+                                class="rounded-lg border border-[#374151] bg-black/70 px-3 py-1.5 text-[11px] text-slate-100 w-full"></textarea>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] text-slate-400 mb-1">Thumbnail URL</label>
+                      <input x-model="newProduct.thumbnail" type="url" placeholder="https://…"
+                             class="rounded-full border border-[#374151] bg-black/70 px-3 py-1.5 text-[11px] text-slate-100 w-full" />
+                    </div>
+                    <button @click="saveNewProduct()" class="btn btn-primary text-[11px] px-4">Save Product</button>
+                  </div>
+
+                  <!-- Products table -->
+                  <div class="overflow-x-auto rounded-lg border border-[#1f2937]">
+                    <table class="w-full text-[10px]">
+                      <thead>
+                        <tr class="border-b border-[#111827] text-slate-400 uppercase tracking-[0.12em]">
+                          <th class="px-3 py-2 text-left">Product</th>
+                          <th class="px-3 py-2 text-left">Category</th>
+                          <th class="px-3 py-2 text-right">Price</th>
+                          <th class="px-3 py-2 text-right">Stock</th>
+                          <th class="px-3 py-2 text-center">Status</th>
+                          <th class="px-3 py-2 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="p in products" :key="p._id">
+                          <tr class="border-b border-[#111827] hover:bg-white/[0.02]">
+                            <td class="px-3 py-2 text-slate-200 max-w-[140px] truncate" x-text="p.name"></td>
+                            <td class="px-3 py-2 text-slate-400" x-text="p.category"></td>
+                            <td class="px-3 py-2 text-right text-slate-200" x-text="'₹' + p.price.toLocaleString('en-IN')"></td>
+                            <td class="px-3 py-2 text-right text-slate-200" x-text="p.stock"></td>
+                            <td class="px-3 py-2 text-center">
+                              <button @click="toggleProductStatus(p._id)"
+                                      :class="['rounded-full px-2 py-0.5 text-[10px] font-semibold border transition',
+                                               p.status === 'active' ? 'bg-emeraldCore/20 text-emeraldSoft border-emeraldCore/40' : 'bg-red-500/10 text-red-400 border-red-500/30']"
+                                      x-text="p.status === 'active' ? 'Active' : 'Inactive'">
+                              </button>
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                              <button @click="deleteProduct(p._id)"
+                                      class="text-red-400 hover:text-red-300 text-[11px]">✕</button>
+                            </td>
+                          </tr>
+                        </template>
+                        <tr x-show="products.length === 0">
+                          <td colspan="6" class="px-3 py-4 text-center text-slate-500">No products yet. Click + Add Product to get started.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- ── Orders ── -->
+                <div x-show="sellerTab === 'orders'" class="space-y-3">
+                  <div class="text-slate-200 font-medium">Seller Orders</div>
+                  <div class="overflow-x-auto rounded-lg border border-[#1f2937]">
+                    <table class="w-full text-[10px]">
+                      <thead>
+                        <tr class="border-b border-[#111827] text-slate-400 uppercase tracking-[0.12em]">
+                          <th class="px-3 py-2 text-left">Order ID</th>
+                          <th class="px-3 py-2 text-left">Customer</th>
+                          <th class="px-3 py-2 text-left">Product</th>
+                          <th class="px-3 py-2 text-right">Qty</th>
+                          <th class="px-3 py-2 text-right">Amount</th>
+                          <th class="px-3 py-2 text-center">Status</th>
+                          <th class="px-3 py-2 text-left">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="o in orders" :key="o.id">
+                          <tr class="border-b border-[#111827] hover:bg-white/[0.02]">
+                            <td class="px-3 py-2 text-slate-400 font-mono" x-text="o.id"></td>
+                            <td class="px-3 py-2 text-slate-200" x-text="o.customer"></td>
+                            <td class="px-3 py-2 text-slate-400 max-w-[120px] truncate" x-text="o.product"></td>
+                            <td class="px-3 py-2 text-right text-slate-200" x-text="o.qty"></td>
+                            <td class="px-3 py-2 text-right text-slate-200" x-text="'₹' + o.amount.toLocaleString('en-IN')"></td>
+                            <td class="px-3 py-2 text-center">
+                              <select x-model="o.status" @change="updateOrderStatus(o.id, o.status)"
+                                      class="rounded-full border border-[#374151] bg-black/70 px-2 py-0.5 text-[10px] text-slate-200">
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="packed">Packed</option>
+                                <option value="shipped">Shipped</option>
+                                <option value="delivered">Delivered</option>
+                              </select>
+                            </td>
+                            <td class="px-3 py-2 text-slate-400" x-text="o.date"></td>
+                          </tr>
+                        </template>
+                        <tr x-show="orders.length === 0">
+                          <td colspan="7" class="px-3 py-4 text-center text-slate-500">No orders yet.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- ── Payouts ── -->
+                <div x-show="sellerTab === 'payouts'" class="space-y-3">
+                  <div class="card-dark p-4 flex items-center justify-between">
+                    <div>
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Balance Due</div>
+                      <div class="text-xl font-semibold text-goldSoft mt-1" x-text="'₹' + payouts.balanceDue.toLocaleString('en-IN')"></div>
+                    </div>
+                    <button @click="requestPayout()" :disabled="payouts.balanceDue <= 0"
+                            class="btn btn-primary text-[11px] px-4 disabled:opacity-40">
+                      Request Payout
+                    </button>
+                  </div>
+                  <div class="overflow-x-auto rounded-lg border border-[#1f2937]">
+                    <table class="w-full text-[10px]">
+                      <thead>
+                        <tr class="border-b border-[#111827] text-slate-400 uppercase tracking-[0.12em]">
+                          <th class="px-3 py-2 text-left">Date</th>
+                          <th class="px-3 py-2 text-right">Amount</th>
+                          <th class="px-3 py-2 text-center">Status</th>
+                          <th class="px-3 py-2 text-left">UTR</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="(row, i) in payouts.history" :key="i">
+                          <tr class="border-b border-[#111827] hover:bg-white/[0.02]">
+                            <td class="px-3 py-2 text-slate-400" x-text="row.date"></td>
+                            <td class="px-3 py-2 text-right text-slate-200" x-text="'₹' + row.amount.toLocaleString('en-IN')"></td>
+                            <td class="px-3 py-2 text-center">
+                              <span :class="['rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                                             row.status === 'paid' ? 'bg-emeraldCore/20 text-emeraldSoft' : 'bg-yellow-500/10 text-yellow-400']"
+                                    x-text="row.status.charAt(0).toUpperCase() + row.status.slice(1)"></span>
+                            </td>
+                            <td class="px-3 py-2 text-slate-400 font-mono" x-text="row.utr"></td>
+                          </tr>
+                        </template>
+                        <tr x-show="payouts.history.length === 0">
+                          <td colspan="4" class="px-3 py-4 text-center text-slate-500">No payout history yet.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- ── Analytics ── -->
+                <div x-show="sellerTab === 'analytics'" class="space-y-3">
+                  <div class="text-slate-200 font-medium">Analytics Overview</div>
+                  <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div class="card-dark p-3">
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Views</div>
+                      <div class="text-base font-semibold text-slate-50 mt-0.5" x-text="analytics.views.toLocaleString('en-IN')"></div>
+                    </div>
+                    <div class="card-dark p-3">
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Conversion</div>
+                      <div class="text-base font-semibold text-emeraldSoft mt-0.5" x-text="analytics.conversionRate"></div>
+                    </div>
+                    <div class="card-dark p-3">
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Avg. Order</div>
+                      <div class="text-base font-semibold text-slate-50 mt-0.5" x-text="'₹' + analytics.avgOrderValue.toLocaleString('en-IN')"></div>
+                    </div>
+                    <div class="card-dark p-3 col-span-2 md:col-span-1">
+                      <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Top Product</div>
+                      <div class="text-[11px] font-semibold text-goldSoft mt-0.5" x-text="analytics.topProduct"></div>
+                    </div>
+                  </div>
+                  <div class="text-[10px] text-slate-500 bg-black/40 rounded-lg p-3 border border-[#111827]">
+                    Full analytics (click-through rates, heatmaps, cohort retention) will be available once the reporting pipeline is connected.
+                  </div>
+                </div>
+
               </div>
             </template>
           </div>
 
-          <!-- Bookkeeping (placeholder for now) -->
+          <!-- Bookkeeping -->
           <div x-show="store.account.view === 'bookkeeping'" class="space-y-3 text-[11px]">
-            <div class="text-slate-200 font-medium">Bookkeeping & account summary</div>
-            <p class="text-slate-400">
-              This area will consolidate your payouts, platform fees, and monthly breakdowns. Once backend reporting endpoints
-              are ready, this view can be wired to show revenue, net payouts, and tax summaries per period.
-            </p>
+            <div class="flex items-center justify-between">
+              <div class="text-slate-200 font-medium">Bookkeeping &amp; Account Summary</div>
+              <button @click="window.downloadBookkeepingCSV()"
+                      class="btn btn-outline text-[10px] px-3 py-1">
+                ⬇ Download CSV
+              </button>
+            </div>
+
+            <!-- Income summary cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div class="card-dark p-3">
+                <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Total Revenue</div>
+                <div class="text-base font-semibold text-slate-50 mt-0.5"
+                     x-text="'₹' + (store.account.bookkeeping?.totalRevenue || 0).toLocaleString('en-IN')"></div>
+              </div>
+              <div class="card-dark p-3">
+                <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Commissions Paid</div>
+                <div class="text-base font-semibold text-red-400 mt-0.5"
+                     x-text="'₹' + (store.account.bookkeeping?.commissionsPaid || 0).toLocaleString('en-IN')"></div>
+              </div>
+              <div class="card-dark p-3">
+                <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">Net Earnings</div>
+                <div class="text-base font-semibold text-emeraldSoft mt-0.5"
+                     x-text="'₹' + (store.account.bookkeeping?.netEarnings || 0).toLocaleString('en-IN')"></div>
+              </div>
+              <div class="card-dark p-3">
+                <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400">TDS Deducted</div>
+                <div class="text-base font-semibold text-yellow-400 mt-0.5"
+                     x-text="'₹' + (store.account.bookkeeping?.tdsDeducted || 0).toLocaleString('en-IN')"></div>
+              </div>
+            </div>
+
+            <!-- Monthly breakdown table -->
+            <div class="overflow-x-auto rounded-lg border border-[#1f2937]">
+              <table class="w-full text-[10px]">
+                <thead>
+                  <tr class="border-b border-[#111827] text-slate-400 uppercase tracking-[0.12em]">
+                    <th class="px-3 py-2 text-left">Month</th>
+                    <th class="px-3 py-2 text-right">Orders</th>
+                    <th class="px-3 py-2 text-right">Revenue</th>
+                    <th class="px-3 py-2 text-right">Commission</th>
+                    <th class="px-3 py-2 text-right">TDS</th>
+                    <th class="px-3 py-2 text-right">Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(row, i) in (store.account.bookkeeping?.monthly || [])" :key="i">
+                    <tr class="border-b border-[#111827] hover:bg-white/[0.02]">
+                      <td class="px-3 py-2 text-slate-300" x-text="row.month"></td>
+                      <td class="px-3 py-2 text-right text-slate-200" x-text="row.orders"></td>
+                      <td class="px-3 py-2 text-right text-slate-200" x-text="'₹' + row.revenue.toLocaleString('en-IN')"></td>
+                      <td class="px-3 py-2 text-right text-red-400" x-text="'₹' + row.commission.toLocaleString('en-IN')"></td>
+                      <td class="px-3 py-2 text-right text-yellow-400" x-text="'₹' + row.tds.toLocaleString('en-IN')"></td>
+                      <td class="px-3 py-2 text-right text-emeraldSoft font-semibold" x-text="'₹' + row.net.toLocaleString('en-IN')"></td>
+                    </tr>
+                  </template>
+                </tbody>
+                <tfoot>
+                  <tr class="border-t border-[#374151] text-slate-300 font-semibold">
+                    <td class="px-3 py-2" colspan="2">Total (6 months)</td>
+                    <td class="px-3 py-2 text-right" x-text="'₹' + (store.account.bookkeeping?.totalRevenue || 0).toLocaleString('en-IN')"></td>
+                    <td class="px-3 py-2 text-right text-red-400" x-text="'₹' + (store.account.bookkeeping?.commissionsPaid || 0).toLocaleString('en-IN')"></td>
+                    <td class="px-3 py-2 text-right text-yellow-400" x-text="'₹' + (store.account.bookkeeping?.tdsDeducted || 0).toLocaleString('en-IN')"></td>
+                    <td class="px-3 py-2 text-right text-emeraldSoft" x-text="'₹' + (store.account.bookkeeping?.netEarnings || 0).toLocaleString('en-IN')"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div class="text-[10px] text-slate-500 bg-black/40 rounded-lg p-2 border border-[#111827]">
+              TDS at 1% is deducted on gross sales per section 194-O of the Income Tax Act. Commission rates vary by category. Contact support for detailed tax statements.
+            </div>
           </div>
 
           <!-- Admin dashboard (read-only overview) -->
@@ -931,45 +1225,335 @@
   </div>
 
   <!-- ============================================
-       SELLER APPLICATION MODAL
+       SELLER ONBOARDING WIZARD (7 steps)
        ============================================ -->
   <div x-show="store.modals.seller"
        x-transition.opacity
        class="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.72)] backdrop-blur-[10px] px-4">
-    <div class="modal-panel w-full max-w-md">
-      <div class="px-4 py-3 border-b border-[#111827] flex items-center justify-between">
-        <div class="font-semibold text-sm">Seller application</div>
-        <button @click="closeSellerModal()" class="text-slate-400 hover:text-slate-100 text-lg font-light">&times;</button>
+    <div class="modal-panel w-full max-w-lg max-h-[90vh] overflow-y-auto" x-data="sellerWizard()">
+
+      <!-- Sticky header with step title + close -->
+      <div class="px-4 py-3 border-b border-[#111827] flex items-center justify-between sticky top-0 bg-[#0b1020] z-10">
+        <div>
+          <div class="font-semibold text-sm" x-text="stepTitles[step - 1]"></div>
+          <div class="text-[10px] text-slate-400">Step <span x-text="step"></span> of <span x-text="totalSteps"></span></div>
+        </div>
+        <button @click="closeModal()" class="text-slate-400 hover:text-slate-100 text-lg font-light">&times;</button>
       </div>
 
-      <form class="p-4 space-y-3" @submit.prevent="async () => await window.handleSellerApplication.call(this)">
-        <div class="form-group">
-          <label for="seller-name" class="block text-[11px] font-semibold text-slate-200 mb-1">Business / Brand name *</label>
-          <input x-ref="sellerName" id="seller-name" type="text" placeholder="Your brand name" class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" required />
-          <div class="field-error-text" x-show="store.errors?.sellerName" x-text="store.errors?.sellerName"></div>
-        </div>
+      <!-- Progress bar -->
+      <div class="h-1 bg-[#111827]">
+        <div class="h-1 bg-goldLine transition-all duration-300" :style="`width: ${(step / totalSteps) * 100}%`"></div>
+      </div>
 
+      <!-- ── Step 1: Personal Details ── -->
+      <div x-show="step === 1" class="p-4 space-y-3">
         <div class="form-group">
-          <label for="seller-desc" class="block text-[11px] font-semibold text-slate-200 mb-1">Short description of products *</label>
-          <textarea x-ref="sellerDesc" id="seller-desc" rows="3" placeholder="What do you make or sell?" class="rounded-lg border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" required></textarea>
-          <div class="field-error-text" x-show="store.errors?.sellerDesc" x-text="store.errors?.sellerDesc"></div>
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Full Name *</label>
+          <input x-model="form.fullName" type="text" placeholder="Your full name"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+          <div class="field-error-text" x-show="errors.fullName" x-text="errors.fullName"></div>
         </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Phone *</label>
+            <input x-model="form.phone" type="tel" placeholder="10-digit number"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+            <div class="field-error-text" x-show="errors.phone" x-text="errors.phone"></div>
+          </div>
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Email *</label>
+            <input x-model="form.email" type="email" placeholder="you@example.com"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+            <div class="field-error-text" x-show="errors.email" x-text="errors.email"></div>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">City *</label>
+            <input x-model="form.city" type="text" placeholder="City"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+            <div class="field-error-text" x-show="errors.city" x-text="errors.city"></div>
+          </div>
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">State *</label>
+            <input x-model="form.state" type="text" placeholder="State"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+            <div class="field-error-text" x-show="errors.state" x-text="errors.state"></div>
+          </div>
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Pincode *</label>
+            <input x-model="form.pincode" type="text" placeholder="6-digit" maxlength="6"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+            <div class="field-error-text" x-show="errors.pincode" x-text="errors.pincode"></div>
+          </div>
+        </div>
+      </div>
 
+      <!-- ── Step 2: Business Details ── -->
+      <div x-show="step === 2" class="p-4 space-y-3">
         <div class="form-group">
-          <label for="seller-email" class="block text-[11px] font-semibold text-slate-200 mb-1">Email *</label>
-          <input x-ref="sellerEmail" id="seller-email" type="email" placeholder="you@brand.com" class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" required />
-          <div class="field-error-text" x-show="store.errors?.sellerEmail" x-text="store.errors?.sellerEmail"></div>
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Business / Brand Name *</label>
+          <input x-model="form.businessName" type="text" placeholder="Your brand name"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+          <div class="field-error-text" x-show="errors.businessName" x-text="errors.businessName"></div>
         </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Business Type *</label>
+            <select x-model="form.businessType"
+                    class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full">
+              <option>Individual</option>
+              <option>Partnership</option>
+              <option>Pvt Ltd</option>
+              <option>OPC</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">PAN Number *</label>
+            <input x-model="form.pan" type="text" placeholder="ABCDE1234F" maxlength="10"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full uppercase" />
+            <div class="field-error-text" x-show="errors.pan" x-text="errors.pan"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">
+            GST Number <span class="text-slate-400">(optional for below-threshold sellers)</span>
+          </label>
+          <input x-model="form.gst" type="text" placeholder="22AAAAA0000A1Z5"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full uppercase" />
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Brand Tagline</label>
+          <input x-model="form.tagline" type="text" placeholder="e.g. Pure. Natural. Trusted."
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+        </div>
+      </div>
 
+      <!-- ── Step 3: Bank Account Setup ── -->
+      <div x-show="step === 3" class="p-4 space-y-3">
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Account Holder Name *</label>
+          <input x-model="form.accountHolderName" type="text" placeholder="As per bank records"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+          <div class="field-error-text" x-show="errors.accountHolderName" x-text="errors.accountHolderName"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Bank Name *</label>
+            <input x-model="form.bankName" type="text" placeholder="e.g. State Bank of India"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+            <div class="field-error-text" x-show="errors.bankName" x-text="errors.bankName"></div>
+          </div>
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Account Type *</label>
+            <select x-model="form.accountType"
+                    class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full">
+              <option>Savings</option>
+              <option>Current</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Account Number *</label>
+          <input x-model="form.accountNumber" type="text" placeholder="Account number"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+          <div class="field-error-text" x-show="errors.accountNumber" x-text="errors.accountNumber"></div>
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Confirm Account Number *</label>
+          <input x-model="form.confirmAccountNumber" type="text" placeholder="Re-enter account number"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+          <div class="field-error-text" x-show="errors.confirmAccountNumber" x-text="errors.confirmAccountNumber"></div>
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">IFSC Code *</label>
+          <input x-model="form.ifscCode" type="text" placeholder="SBIN0001234" maxlength="11"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full uppercase" />
+          <div class="field-error-text" x-show="errors.ifscCode" x-text="errors.ifscCode"></div>
+        </div>
+      </div>
+
+      <!-- ── Step 4: Document Upload ── -->
+      <div x-show="step === 4" class="p-4 space-y-3">
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">
+            Profile Photo URL <span class="text-slate-400">(optional)</span>
+          </label>
+          <input x-model="form.profilePhotoUrl" type="url" placeholder="https://…"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Aadhaar Card Number *</label>
+          <input x-model="form.aadhaarNumber" type="text" placeholder="12-digit Aadhaar number" maxlength="12"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+          <div class="field-error-text" x-show="errors.aadhaarNumber" x-text="errors.aadhaarNumber"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Govt. ID Type *</label>
+            <select x-model="form.govtIdType"
+                    class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full">
+              <option>Aadhaar</option>
+              <option>Passport</option>
+              <option>Voter ID</option>
+              <option>Driving Licence</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Govt. ID Number *</label>
+            <input x-model="form.govtIdNumber" type="text" placeholder="ID number"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+            <div class="field-error-text" x-show="errors.govtIdNumber" x-text="errors.govtIdNumber"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" x-model="form.uploadDeclaration" class="mt-0.5 accent-goldLine" />
+            <span class="text-[11px] text-slate-300">I declare that all documents provided are genuine and I consent to verification by EmproiumVipani.</span>
+          </label>
+          <div class="field-error-text" x-show="errors.uploadDeclaration" x-text="errors.uploadDeclaration"></div>
+        </div>
+      </div>
+
+      <!-- ── Step 5: First Product Listing ── -->
+      <div x-show="step === 5" class="p-4 space-y-3">
         <div class="text-[10px] text-slate-400 bg-black/50 rounded-lg p-2 border border-[#111827]">
-          After approval, we'll contact you with next steps and onboarding details.
+          Add your first product to get started. You can add more from the seller dashboard later.
         </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Product Name *</label>
+          <input x-model="form.productName" type="text" placeholder="e.g. Organic Turmeric Powder 500g"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+          <div class="field-error-text" x-show="errors.productName" x-text="errors.productName"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Category *</label>
+            <select x-model="form.productCategory"
+                    class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full">
+              <option>Natural Products</option>
+              <option>Stationery</option>
+              <option>Worksheets</option>
+              <option>Electronics</option>
+              <option>Fashion</option>
+              <option>Home &amp; Kitchen</option>
+              <option>Books</option>
+              <option>Art &amp; Crafts</option>
+              <option>Health &amp; Beauty</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Price (₹) *</label>
+            <input x-model="form.productPrice" type="number" placeholder="0" min="0"
+                   class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+            <div class="field-error-text" x-show="errors.productPrice" x-text="errors.productPrice"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Stock Quantity *</label>
+          <input x-model="form.productStock" type="number" placeholder="e.g. 100" min="0"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+          <div class="field-error-text" x-show="errors.productStock" x-text="errors.productStock"></div>
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">Short Description *</label>
+          <textarea x-model="form.productDescription" rows="2" placeholder="Brief product description…"
+                    class="rounded-lg border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full"></textarea>
+          <div class="field-error-text" x-show="errors.productDescription" x-text="errors.productDescription"></div>
+        </div>
+        <div class="form-group">
+          <label class="block text-[11px] font-semibold text-slate-200 mb-1">
+            Product Image URL <span class="text-slate-400">(optional)</span>
+          </label>
+          <input x-model="form.productImageUrl" type="url" placeholder="https://…"
+                 class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
+        </div>
+      </div>
 
-        <button type="submit"
-          class="btn btn-primary w-full mt-3 text-xs">
-          Submit application
+      <!-- ── Step 6: Seller Agreement ── -->
+      <div x-show="step === 6" class="p-4 space-y-3">
+        <div class="bg-black/50 rounded-lg p-3 border border-[#111827] text-[10px] text-slate-400 space-y-2 max-h-44 overflow-y-auto">
+          <div class="text-[11px] font-semibold text-slate-200">Seller Terms &amp; Conditions</div>
+          <p>By registering as a seller on EmproiumVipani, you agree to the following:</p>
+          <p><strong class="text-slate-300">1. Authenticity</strong> — All products must be genuine, accurately described, and legally permissible to sell in India.</p>
+          <p><strong class="text-slate-300">2. Pricing</strong> — Prices must include all applicable taxes. You are responsible for GST compliance.</p>
+          <p><strong class="text-slate-300">3. Fulfillment</strong> — Orders must be shipped within 2 business days of confirmation. Late shipments may incur penalties.</p>
+          <p><strong class="text-slate-300">4. Returns &amp; Refunds</strong> — You agree to EmproiumVipani's buyer-friendly return policy. Refund amounts will be deducted from payouts.</p>
+          <p><strong class="text-slate-300">5. Platform Use</strong> — No circumvention of the platform for direct sales to platform-sourced customers.</p>
+          <p><strong class="text-slate-300">6. Account Termination</strong> — EmproiumVipani reserves the right to suspend accounts for policy violations without prior notice.</p>
+        </div>
+        <div class="bg-black/50 rounded-lg p-3 border border-[#111827] text-[10px] space-y-1.5">
+          <div class="text-[11px] font-semibold text-slate-200 mb-2">Commission Structure</div>
+          <div class="flex justify-between text-slate-300"><span>Electronics</span><span class="text-goldSoft font-semibold">15%</span></div>
+          <div class="flex justify-between text-slate-300"><span>Fashion</span><span class="text-goldSoft font-semibold">20%</span></div>
+          <div class="flex justify-between text-slate-300"><span>Natural Products</span><span class="text-goldSoft font-semibold">25%</span></div>
+          <div class="flex justify-between text-slate-300"><span>Stationery</span><span class="text-goldSoft font-semibold">18%</span></div>
+          <div class="flex justify-between text-slate-300"><span>All Others</span><span class="text-goldSoft font-semibold">20%</span></div>
+          <div class="pt-1 text-slate-400">Commissions are deducted before payout. Payouts are processed weekly every Monday.</div>
+        </div>
+        <div class="form-group">
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" x-model="form.acceptedTerms" class="mt-0.5 accent-goldLine" />
+            <span class="text-[11px] text-slate-300">I have read and agree to the EmproiumVipani Seller Terms &amp; Conditions and understand the commission structure above.</span>
+          </label>
+          <div class="field-error-text" x-show="errors.acceptedTerms" x-text="errors.acceptedTerms"></div>
+        </div>
+      </div>
+
+      <!-- ── Step 7: Review & Submit ── -->
+      <div x-show="step === 7" class="p-4 space-y-3">
+        <div class="text-[11px] font-semibold text-slate-200">Review your application</div>
+        <div class="space-y-2">
+          <div class="card-dark p-3 space-y-1 text-[11px]">
+            <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400 mb-2">Personal Details</div>
+            <div class="flex justify-between"><span class="text-slate-400">Name</span><span class="text-slate-200" x-text="form.fullName"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Phone</span><span class="text-slate-200" x-text="form.phone"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Email</span><span class="text-slate-200" x-text="form.email"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Location</span><span class="text-slate-200" x-text="form.city + ', ' + form.state + ' – ' + form.pincode"></span></div>
+          </div>
+          <div class="card-dark p-3 space-y-1 text-[11px]">
+            <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400 mb-2">Business Details</div>
+            <div class="flex justify-between"><span class="text-slate-400">Business</span><span class="text-slate-200" x-text="form.businessName"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Type</span><span class="text-slate-200" x-text="form.businessType"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">PAN</span><span class="text-slate-200 uppercase" x-text="form.pan"></span></div>
+            <div class="flex justify-between" x-show="form.gst"><span class="text-slate-400">GST</span><span class="text-slate-200 uppercase" x-text="form.gst"></span></div>
+          </div>
+          <div class="card-dark p-3 space-y-1 text-[11px]">
+            <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400 mb-2">Bank Account</div>
+            <div class="flex justify-between"><span class="text-slate-400">Bank</span><span class="text-slate-200" x-text="form.bankName"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Account</span><span class="text-slate-200" x-text="'****' + form.accountNumber.slice(-4)"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">IFSC</span><span class="text-slate-200 uppercase" x-text="form.ifscCode"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Type</span><span class="text-slate-200" x-text="form.accountType"></span></div>
+          </div>
+          <div class="card-dark p-3 space-y-1 text-[11px]">
+            <div class="text-[10px] uppercase tracking-[0.15em] text-slate-400 mb-2">First Product</div>
+            <div class="flex justify-between"><span class="text-slate-400">Name</span><span class="text-slate-200" x-text="form.productName"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Category</span><span class="text-slate-200" x-text="form.productCategory"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Price</span><span class="text-slate-200" x-text="'₹' + Number(form.productPrice).toLocaleString('en-IN')"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Stock</span><span class="text-slate-200" x-text="form.productStock + ' units'"></span></div>
+          </div>
+        </div>
+        <div class="text-[10px] text-slate-400 bg-black/50 rounded-lg p-2 border border-[#111827]">
+          After submission, your application will be reviewed within 24 hours. Confirmation will be sent to
+          <span class="text-slate-200" x-text="form.email"></span>.
+        </div>
+      </div>
+
+      <!-- Navigation buttons -->
+      <div class="px-4 pb-4 flex gap-3" :class="step > 1 ? 'justify-between' : 'justify-end'">
+        <button x-show="step > 1" type="button" @click="prevStep()" class="btn btn-outline text-[11px] px-4">
+          ← Back
         </button>
-      </form>
+        <button x-show="step < totalSteps" type="button" @click="nextStep()" class="btn btn-primary text-[11px] px-6">
+          Next →
+        </button>
+        <button x-show="step === totalSteps" type="button" @click="submit()" class="btn btn-primary text-[11px] px-6">
+          Submit Application ✓
+        </button>
+      </div>
+
     </div>
   </div>
 

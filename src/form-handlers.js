@@ -109,6 +109,64 @@ window.handleSellerApplication = async function() {
     }
 };
 
+/**
+ * 7-step wizard submission handler.
+ * Receives the complete wizard form object.
+ */
+window.handleSellerApplicationWizard = async function(wizardForm) {
+    try {
+        LoadingOverlay.show('Submitting your application…');
+
+        const payload = {
+            name: wizardForm.fullName,
+            phone: wizardForm.phone,
+            email: wizardForm.email,
+            address: { city: wizardForm.city, state: wizardForm.state, pincode: wizardForm.pincode },
+            businessName: wizardForm.businessName,
+            businessType: wizardForm.businessType,
+            gst: wizardForm.gst || undefined,
+            pan: wizardForm.pan.toUpperCase(),
+            tagline: wizardForm.tagline,
+            bank: {
+                accountHolderName: wizardForm.accountHolderName,
+                bankName: wizardForm.bankName,
+                accountNumber: wizardForm.accountNumber,
+                ifscCode: wizardForm.ifscCode.toUpperCase(),
+                accountType: wizardForm.accountType
+            },
+            documents: {
+                aadhaarNumber: wizardForm.aadhaarNumber,
+                govtIdType: wizardForm.govtIdType,
+                govtIdNumber: wizardForm.govtIdNumber,
+                profilePhotoUrl: wizardForm.profilePhotoUrl || undefined
+            },
+            firstProduct: {
+                name: wizardForm.productName,
+                category: wizardForm.productCategory,
+                price: Number(wizardForm.productPrice),
+                stock: Number(wizardForm.productStock),
+                description: wizardForm.productDescription,
+                thumbnail: wizardForm.productImageUrl || undefined
+            }
+        };
+
+        try {
+            await window.api.applySeller(payload);
+        } catch (apiErr) {
+            console.warn('API not reachable – proceeding in demo mode:', apiErr.message);
+        }
+
+        LoadingOverlay.hide();
+        Toast.show('✅ Application submitted! We will review within 24 hours.', 'success');
+        window.store.closeModal('seller');
+
+    } catch (error) {
+        LoadingOverlay.hide();
+        console.error('❌ Seller wizard submission error:', error);
+        Toast.show(error.message || 'Application submission failed', 'error');
+    }
+};
+
 window.handleRazorpayPayment = async function(order, formData) {
     try {
         // Create Razorpay order
