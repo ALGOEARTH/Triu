@@ -1120,7 +1120,7 @@ window.sellerDashboard = function() {
 
         async requestPayout() {
             if (this.payouts.balanceDue <= 0) { if (window.Toast) Toast.show('No balance due', 'info'); return; }
-            this.payouts.history.unshift({ date: new Date().toISOString().split('T')[0], amount: this.payouts.balanceDue, status: 'processing', utr: '–' });
+            this.payouts.history.unshift({ date: new Date().toISOString().split('T')[0], amount: this.payouts.balanceDue, status: 'processing', utr: 'PENDING' });
             this.payouts.balanceDue = 0;
             if (window.Toast) Toast.show('Payout request submitted! Processing in 3–5 business days.', 'success');
         }

@@ -1,32 +1,19 @@
 {
   "name": "emproium-vipani",
   "version": 2,
-  "projectSettings": {
-    "sourceFilesOutsideRootDirectory": false
-  },
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "publicSource": "./public",
   "installCommand": "npm install",
-  "framework": "static",
+  "framework": null,
   "regions": ["iad1"],
-  "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
-  "redirects": [
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
     {
-      "source": "/old-page",
-      "destination": "/",
-      "permanent": true
+      "source": "/((?!.*\\..*|admin).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -57,11 +44,11 @@
       ]
     },
     {
-      "source": "/api/*",
+      "source": "/assets/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "max-age=3600"
+          "value": "public, max-age=31536000, immutable"
         }
       ]
     },
@@ -90,10 +77,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "EMAILJS_PUBLIC_KEY": "@emailjs_public_key",
-    "EMAILJS_SERVICE_ID": "@emailjs_service_id",
-    "EMAILJS_TEMPLATE_ID": "@emailjs_template_id"
-  }
+  ]
 }
