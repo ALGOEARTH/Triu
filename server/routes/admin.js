@@ -785,11 +785,58 @@ router.post('/tickets/:id/message', verifyToken, verifyAdmin, async (req, res) =
 // ============================================
 const GeneratedDocument = require('../models/GeneratedDocument');
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildDocumentHtml(type, data) {
   const now = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const docLabels = { invoice: 'Tax Invoice', receipt: 'Receipt', credit_note: 'Credit Note', debit_note: 'Debit Note', settlement_statement: 'Settlement Statement', payout_summary: 'Payout Summary', booking_confirmation: 'Booking Confirmation', order_confirmation: 'Order Confirmation', cancellation_receipt: 'Cancellation Receipt', refund_receipt: 'Refund Receipt', commission_statement: 'Commission Statement' };
-  const label = docLabels[type] || 'Document';
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${label}</title><style>body{font-family:system-ui,sans-serif;margin:0;padding:32px;color:#111;background:#fff}h1{font-size:1.5rem;margin-bottom:4px}.badge{font-size:.7rem;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:2px 8px;border-radius:999px;display:inline-block;margin-bottom:16px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:24px;font-size:.875rem}.meta span{color:#6b7280}.val{color:#111;font-weight:600}table{width:100%;border-collapse:collapse;font-size:.875rem}th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:8px 12px;text-align:left;font-weight:600}td{padding:8px 12px;border-bottom:1px solid #f3f4f6}.total-row td{font-weight:700;background:#f0fdf4}.footer{margin-top:32px;font-size:.75rem;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px}</style></head><body><h1>${label}</h1><span class="badge">EmproiumVipani • Made in India</span><div class="meta"><span>Document ID</span><span class="val">${data.documentId || 'AUTO'}</span><span>Date</span><span class="val">${now}</span><span>Customer</span><span class="val">${data.customerName || '—'}</span><span>Reference</span><span class="val">${data.referenceId || '—'}</span></div><table><thead><tr><th>Item / Description</th><th>Qty</th><th>Rate (₹)</th><th>GST</th><th>Amount (₹)</th></tr></thead><tbody>${(data.items || []).map(i => `<tr><td>${i.name||'—'}</td><td>${i.quantity||1}</td><td>${(i.price||0).toLocaleString('en-IN')}</td><td>${i.gstRate||0}%</td><td>${((i.price||0)*(i.quantity||1)).toLocaleString('en-IN')}</td></tr>`).join('')}<tr class="total-row"><td colspan="4">Total</td><td>₹${(data.total||0).toLocaleString('en-IN')}</td></tr></tbody></table><div class="footer">This is a computer-generated document. EmproiumVipani Pvt. Ltd. • GSTIN: XXXXXXXXXXXX • support@emproiumvipani.com</div></body></html>`;
+  const label = escapeHtml(docLabels[type] || 'Document');
+  const docId = escapeHtml(data.documentId || 'AUTO');
+  const customerName = escapeHtml(data.customerName || '—');
+  const referenceId = escapeHtml(data.referenceId || '—');
+  const itemRows = (data.items || []).map(i => {
+    const name = escapeHtml(i.name || '—');
+    const qty = escapeHtml(i.quantity || 1);
+    const price = Number(i.price || 0);
+    const gstRate = escapeHtml(i.gstRate || 0);
+    const amount = (price * Number(i.quantity || 1)).toLocaleString('en-IN');
+    return `<tr><td>${name}</td><td>${qty}</td><td>${price.toLocaleString('en-IN')}</td><td>${gstRate}%</td><td>${amount}</td></tr>`;
+  }).join('');
+  const total = Number(data.total || 0).toLocaleString('en-IN');
+  return [
+    '<!DOCTYPE html><html><head><meta charset="UTF-8">',
+    `<title>${label}</title>`,
+    '<style>body{font-family:system-ui,sans-serif;margin:0;padding:32px;color:#111;background:#fff}',
+    'h1{font-size:1.5rem;margin-bottom:4px}',
+    '.badge{font-size:.7rem;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:2px 8px;border-radius:999px;display:inline-block;margin-bottom:16px}',
+    '.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:24px;font-size:.875rem}',
+    '.meta span{color:#6b7280}.val{color:#111;font-weight:600}',
+    'table{width:100%;border-collapse:collapse;font-size:.875rem}',
+    'th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:8px 12px;text-align:left;font-weight:600}',
+    'td{padding:8px 12px;border-bottom:1px solid #f3f4f6}',
+    '.total-row td{font-weight:700;background:#f0fdf4}',
+    '.footer{margin-top:32px;font-size:.75rem;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px}',
+    '</style></head><body>',
+    `<h1>${label}</h1>`,
+    '<span class="badge">EmproiumVipani \u2022 Made in India</span>',
+    '<div class="meta">',
+    `<span>Document ID</span><span class="val">${docId}</span>`,
+    `<span>Date</span><span class="val">${now}</span>`,
+    `<span>Customer</span><span class="val">${customerName}</span>`,
+    `<span>Reference</span><span class="val">${referenceId}</span>`,
+    '</div>',
+    '<table><thead><tr><th>Item / Description</th><th>Qty</th><th>Rate (\u20b9)</th><th>GST</th><th>Amount (\u20b9)</th></tr></thead>',
+    `<tbody>${itemRows}<tr class="total-row"><td colspan="4">Total</td><td>\u20b9${total}</td></tr></tbody></table>`,
+    '<div class="footer">This is a computer-generated document. EmproiumVipani Pvt. Ltd. \u2022 GSTIN: XXXXXXXXXXXX \u2022 support@emproiumvipani.com</div>',
+    '</body></html>'
+  ].join('');
 }
 
 // POST /api/admin/documents/generate
