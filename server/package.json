@@ -7,8 +7,15 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "echo 'Backend built'",
-    "test": "jest --detectOpenHandles",
-    "lint": "eslint ."
+    "test": "jest --detectOpenHandles --forceExit",
+    "test:unit": "jest --testPathPattern=tests/unit --detectOpenHandles --forceExit",
+    "test:integration": "jest --testPathPattern=tests/integration --detectOpenHandles --forceExit",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "db:generate": "node scripts/db-generate.js",
+    "db:migrate": "node scripts/db-migrate.js",
+    "db:seed": "node scripts/db-seed.js",
+    "db:reset": "node scripts/db-reset.js"
   },
   "keywords": [
     "ecommerce",
@@ -35,7 +42,21 @@
   "devDependencies": {
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
-    "nodemon": "^3.0.2"
+    "mongodb-memory-server": "^9.1.6",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000,
+    "setupFilesAfterFramework": [],
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "routes/**/*.js",
+      "utils/**/*.js",
+      "models/**/*.js",
+      "!**/node_modules/**"
+    ]
   },
   "engines": {
     "node": ">=18.0.0",
