@@ -12,6 +12,11 @@ const { auditLogger } = require('./utils/auditLogger');
 // Load environment variables
 dotenv.config();
 
+// Pre-load models to ensure schemas and indexes are registered
+require('./models/Settlement');
+require('./models/SupportTicket');
+require('./models/GeneratedDocument');
+
 // Initialize Express app
 const app = express();
 

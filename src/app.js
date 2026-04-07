@@ -23,8 +23,15 @@ class AppStore {
                 identifier: '',   // email or phone used for login
                 // Session management
                 sessionWarningShown: false,
-                showSessionExtend: false
+                showSessionExtend: false,
+                // Contextual auth — stores intent when a guarded action triggers login
+                pendingAction: null,       // function to call after successful login
+                authContext: null,         // human-readable reason shown in login modal
+                authContextAction: null,   // short label of the action (e.g. 'checkout')
             },
+
+            // Guest session — generated once per device, persisted in localStorage
+            guestSessionId: null,
 
             // Account & dashboard data
             account: {
@@ -224,6 +231,26 @@ class AppStore {
         }
     }
     
+    // ========== Guest Session ==========
+    /**
+     * Generate or restore a stable guest session ID.
+     * Used to associate cart/wishlist/draft data with a device before login.
+     */
+    ensureGuestSession() {
+        let guestId = localStorage.getItem('emproium_guest_id');
+        if (!guestId) {
+            // Use the Web Crypto API for a cryptographically secure random UUID.
+            // crypto.randomUUID() is available in all modern browsers (Chrome 92+,
+            // Firefox 95+, Safari 15.4+) and in HTTPS / localhost contexts.
+            guestId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+            localStorage.setItem('emproium_guest_id', guestId);
+        }
+        this.state.guestSessionId = guestId;
+    }
+
     // ========== Storage Management ==========
     loadFromStorage() {
         const saved        = localStorage.getItem('emproium_cart');
@@ -231,6 +258,9 @@ class AppStore {
         const sessionExpiry= localStorage.getItem('emproium_session_expires_at');
         const filtersSaved = localStorage.getItem('emproium_filters');
         const wishlistSaved= localStorage.getItem('emproium_wishlist');
+
+        // Always ensure a guest session ID exists
+        this.ensureGuestSession();
 
         if (saved) {
             try { this.state.cart = JSON.parse(saved); } catch (e) { console.error('Cart load error:', e); }
@@ -699,7 +729,50 @@ class AppStore {
     }
     
     // ========== Auth (OTP + SAFE KEY) ==========
+
     /**
+     * Guest-first auth guard.
+     *
+     * Call this before any protected action. If the user is already logged in
+     * the callback is invoked immediately. If not, the login modal is opened
+     * with a contextual message explaining WHY login is required.  The callback
+     * is stored as a pending action and executed automatically after the user
+     * completes login — so the user is never left stranded.
+     *
+     * @param {string}   actionLabel   Short name shown in the auth modal (e.g. 'checkout')
+     * @param {string}   contextMsg    Human-readable reason (e.g. 'to place your order')
+     * @param {Function} callback      The action to run after successful authentication
+     */
+    requireAuth(actionLabel, contextMsg, callback) {
+        if (this.state.isLoggedIn) {
+            callback();
+            return;
+        }
+        // Store the pending action for deferred execution
+        this.state.auth.pendingAction     = callback;
+        this.state.auth.authContext       = contextMsg;
+        this.state.auth.authContextAction = actionLabel;
+        this.openModal('login');
+        this.notify();
+    }
+
+    /**
+     * Execute and clear any pending action stored by requireAuth.
+     * Called internally after a successful login.
+     */
+    _executePendingAction() {
+        const pending = this.state.auth.pendingAction;
+        // Clear before calling so re-entrant calls don't loop
+        this.state.auth.pendingAction     = null;
+        this.state.auth.authContext       = null;
+        this.state.auth.authContextAction = null;
+        if (typeof pending === 'function') {
+            try { pending(); } catch (e) { console.error('❌ Pending action error:', e); }
+        }
+    }
+
+    /**
+     * Start login/signup by requesting an OTP to email or phone.
      * Start login/signup by requesting an OTP to email or phone.
      */
     async startOtpFlow(identifier, purpose = 'login') {
@@ -754,14 +827,20 @@ class AppStore {
             // First-time user – ask them to set a key
             this.state.auth.otpStage = 'set_key';
             this.showToast('Create your private key to secure your account.', 'info');
-        } else if (!this.state.isLoggedIn) {
-            // Has key but not logged in yet (token will be obtained via loginWithKey)
-            this.state.auth.otpStage = 'login_with_key';
-        } else {
-            // Fully logged in
+        } else if (this.state.isLoggedIn) {
+            // Backend returned a token directly (OTP-only flow)
+            this.state.sessionExpiresAt = Date.now() + 15 * 60 * 1000;
             this.state.auth.otpStage = 'idle';
+            this.loadProfileAndOrders().catch(console.error);
+            this.saveToStorage();
+            this.notify();
             this.closeModal('login');
             this.showToast('✅ Logged in successfully!', 'success');
+            this._executePendingAction();
+            return result;
+        } else {
+            // Has key but not logged in yet (token will be obtained via loginWithKey)
+            this.state.auth.otpStage = 'login_with_key';
         }
 
         this.saveToStorage();
@@ -800,6 +879,9 @@ class AppStore {
         this.closeModal('login');
         this.showToast('🔐 Key set. You are now logged in.', 'success');
 
+        // Execute any action that was deferred because the user wasn't logged in
+        this._executePendingAction();
+
         return result;
     }
 
@@ -830,6 +912,9 @@ class AppStore {
 
         this.closeModal('login');
         this.showToast('✅ Logged in successfully!', 'success');
+
+        // Execute any action that was deferred because the user wasn't logged in
+        this._executePendingAction();
 
         return result;
     }
@@ -1788,7 +1873,12 @@ function appData() {
         },
         
         openSellerModal() {
-            store.openModal('seller');
+            // Guard: becoming a seller requires a verified account.
+            store.requireAuth(
+                'seller-application',
+                'Please sign in to apply as a seller on our marketplace.',
+                () => store.openModal('seller')
+            );
         },
         
         closeSellerModal() {
@@ -1804,7 +1894,14 @@ function appData() {
         },
         
         openCheckoutModal() {
-            store.openModal('checkout');
+            // Guard: require login before entering the checkout flow.
+            // If the user is a guest, open the login modal with context;
+            // after successful login the checkout modal opens automatically.
+            store.requireAuth(
+                'checkout',
+                'Please sign in to complete your order. Your cart is saved.',
+                () => store.openModal('checkout')
+            );
         },
         
         closeCheckoutModal() {

@@ -1,0 +1,92 @@
+name: CD — Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false   # don't cancel in-flight staging deploys
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Guard: only deploy if CI passes
+  # ─────────────────────────────────────────────────────────────────────────────
+  ci-check:
+    name: CI Gate
+    uses: ./.github/workflows/ci.yml
+
+  deploy-staging:
+    name: Deploy → Staging
+    runs-on: ubuntu-latest
+    needs: [ci-check]
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build for staging
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.STAGING_API_URL }}
+          VITE_RAZORPAY_KEY_ID: ${{ secrets.STAGING_RAZORPAY_KEY_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.STAGING_EMAILJS_PUBLIC_KEY }}
+          VITE_EMAILJS_SERVICE_ID: ${{ secrets.STAGING_EMAILJS_SERVICE_ID }}
+          VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.STAGING_EMAILJS_TEMPLATE_ID }}
+
+      - name: Deploy frontend to GitHub Pages (staging path)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+      # If using Vercel for staging, uncomment:
+      # - name: Deploy to Vercel (Staging)
+      #   run: npx vercel --token ${{ secrets.VERCEL_TOKEN }} --env VITE_API_URL=${{ secrets.STAGING_API_URL }}
+
+      - name: Deploy backend to staging
+        run: echo "Deploy server/ to your staging host here"
+        # Example: rsync, Railway, Render, or SSH deploy
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Post-deploy smoke test against staging
+  # ─────────────────────────────────────────────────────────────────────────────
+  smoke-staging:
+    name: Smoke Test — Staging
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Wait for staging to be ready
+        run: sleep 20
+
+      - name: Run smoke tests
+        run: npm run smoke:test
+        env:
+          SMOKE_BASE_URL: ${{ vars.STAGING_URL }}
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Staging smoke tests failed. Deployment may be broken."
+          # Add Slack/Teams webhook notification here if desired

@@ -1,0 +1,123 @@
+name: CD — Deploy to Production
+
+on:
+  # Manual trigger only — production deploys must be intentional
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm production release'
+        required: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false   # never cancel an in-flight production deploy
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Safety check
+  # ─────────────────────────────────────────────────────────────────────────────
+  confirm-input:
+    name: Confirm Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify confirmation word
+        run: |
+          if [[ "${{ github.event.inputs.confirm }}" != "DEPLOY" ]]; then
+            echo "❌ Confirmation word incorrect. Type DEPLOY to release to production."
+            exit 1
+          fi
+          echo "✅ Production deploy confirmed"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CI must pass before production release
+  # ─────────────────────────────────────────────────────────────────────────────
+  ci-check:
+    name: CI Gate
+    needs: [confirm-input]
+    uses: ./.github/workflows/ci.yml
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Production deploy (requires 'production' GitHub environment with reviewers)
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-production:
+    name: Deploy → Production
+    runs-on: ubuntu-latest
+    needs: [ci-check]
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build for production
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+          VITE_RAZORPAY_KEY_ID: ${{ secrets.PRODUCTION_RAZORPAY_KEY_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.PRODUCTION_EMAILJS_PUBLIC_KEY }}
+          VITE_EMAILJS_SERVICE_ID: ${{ secrets.PRODUCTION_EMAILJS_SERVICE_ID }}
+          VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.PRODUCTION_EMAILJS_TEMPLATE_ID }}
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      # - name: Deploy to Vercel (Production)
+      #   run: npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy backend
+        run: echo "Deploy server/ to production host here"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Post-deploy smoke tests against production
+  # ─────────────────────────────────────────────────────────────────────────────
+  smoke-production:
+    name: Smoke Test — Production
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Wait for production to be ready
+        run: sleep 30
+
+      - name: Run smoke tests
+        run: npm run smoke:test
+        env:
+          SMOKE_BASE_URL: ${{ vars.PRODUCTION_URL }}
+
+      - name: Notify on success
+        if: success()
+        run: echo "✅ Production deployment verified and healthy"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Production smoke tests FAILED — investigate immediately"
+          # Add PagerDuty / Slack critical alert here
