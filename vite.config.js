@@ -14,8 +14,8 @@ window.__ENV__ = {
   VITE_EMAILJS_PUBLIC_KEY: ${JSON.stringify(process.env.VITE_EMAILJS_PUBLIC_KEY || process.env.EMAILJS_PUBLIC_KEY || '')},
   VITE_EMAILJS_SERVICE_ID: ${JSON.stringify(process.env.VITE_EMAILJS_SERVICE_ID || process.env.EMAILJS_SERVICE_ID || '')},
   VITE_EMAILJS_TEMPLATE_ID: ${JSON.stringify(process.env.VITE_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || '')},
-  VITE_APPWRITE_ENDPOINT: ${JSON.stringify(process.env.VITE_APPWRITE_ENDPOINT || 'https://syd.cloud.appwrite.io/v1')},
-  VITE_APPWRITE_PROJECT_ID: ${JSON.stringify(process.env.VITE_APPWRITE_PROJECT_ID || '69d77850001bef04a924')},
+  VITE_APPWRITE_ENDPOINT: ${JSON.stringify(process.env.VITE_APPWRITE_ENDPOINT || process.env.APPWRITE_ENDPOINT || '')},
+  VITE_APPWRITE_PROJECT_ID: ${JSON.stringify(process.env.VITE_APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || '')},
 };
 `
       return [{ tag: 'script', attrs: {}, children: envContent, injectTo: 'head-prepend' }]

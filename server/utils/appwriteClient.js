@@ -8,10 +8,18 @@ let _client = null;
 
 function getAppwriteClient() {
     if (!_client) {
+        const endpoint = process.env.APPWRITE_ENDPOINT;
+        const projectId = process.env.APPWRITE_PROJECT_ID;
+        const apiKey = process.env.APPWRITE_API_KEY;
+
+        if (!endpoint || !projectId || !apiKey) {
+            console.warn('⚠️ Appwrite env vars not fully set (APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, APPWRITE_API_KEY). Email delivery will fall back to console.');
+        }
+
         _client = new sdk.Client()
-            .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://syd.cloud.appwrite.io/v1')
-            .setProject(process.env.APPWRITE_PROJECT_ID || '69d77850001bef04a924')
-            .setKey(process.env.APPWRITE_API_KEY || '');
+            .setEndpoint(endpoint || 'https://syd.cloud.appwrite.io/v1')
+            .setProject(projectId || '')
+            .setKey(apiKey || '');
     }
     return _client;
 }
