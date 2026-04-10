@@ -92,7 +92,7 @@
   </script>
 
   <!-- Content Security Policy — restricts script/style/frame sources -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdn.tailwindcss.com cdn.emailjs.com checkout.razorpay.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdn.tailwindcss.com; font-src 'self' fonts.gstatic.com data:; connect-src 'self' https:; img-src 'self' data: https: blob:; frame-src checkout.razorpay.com; object-src 'none'; base-uri 'self';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net cdn.tailwindcss.com cdn.emailjs.com checkout.razorpay.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdn.tailwindcss.com; font-src 'self' fonts.gstatic.com data:; connect-src 'self' https:; img-src 'self' data: https: blob:; frame-src checkout.razorpay.com; object-src 'none'; base-uri 'self';" />
 
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;900&display=swap" rel="stylesheet"/>
@@ -112,7 +112,7 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="bg-ink-900 text-slate-100 antialiased" x-data="appData()" x-init="init()"
+<body class="bg-ink-900 text-slate-100 antialiased" x-data="appData()"
       x-effect="$store.seo && store.selectedProduct ? $store.seo.set(store.selectedProduct.name, store.selectedProduct.description || '', store.selectedProduct.image || '') : ($store.seo && $store.seo.reset())">
 
   <!-- GLOBAL BACKGROUND -->
@@ -1797,12 +1797,15 @@
         </template>
         <!-- Step 1: Identifier -->
         <div class="space-y-2">
-          <label class="block text-[11px] font-semibold text-slate-200 mb-1">
+          <label for="auth-identifier" class="block text-[11px] font-semibold text-slate-200 mb-1">
             Email or phone number
           </label>
           <input
             x-ref="authIdentifier"
+            id="auth-identifier"
+            name="identifier"
             type="text"
+            autocomplete="email"
             placeholder="you@example.com or +91 98765 43210"
             class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
           <button
@@ -1816,12 +1819,17 @@
         <!-- Step 2: OTP -->
         <template x-if="store.auth.otpStage === 'awaiting_otp'">
           <div class="space-y-2 mt-2">
-            <label class="block text-[11px] font-semibold text-slate-200 mb-1">
+            <label for="auth-otp-code" class="block text-[11px] font-semibold text-slate-200 mb-1">
               Enter OTP
             </label>
             <input
               x-ref="authOtpCode"
+              id="auth-otp-code"
+              name="otpCode"
               type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
               placeholder="6-digit code"
               class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
             <button
@@ -1836,17 +1844,23 @@
         <!-- Step 3: Set key (first time) -->
         <template x-if="store.auth.otpStage === 'set_key'">
           <div class="space-y-2 mt-2">
-            <label class="block text-[11px] font-semibold text-slate-200 mb-1">
+            <label for="auth-key" class="block text-[11px] font-semibold text-slate-200 mb-1">
               Create your private key
             </label>
             <input
               x-ref="authKey"
+              id="auth-key"
+              name="key"
               type="password"
+              autocomplete="new-password"
               placeholder="A strong key you will remember"
               class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
             <input
               x-ref="authKeyConfirm"
+              id="auth-key-confirm"
+              name="keyConfirm"
               type="password"
+              autocomplete="new-password"
               placeholder="Confirm key"
               class="mt-2 rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
             <button
@@ -1861,12 +1875,15 @@
         <!-- Step 4: Existing user login with key -->
         <template x-if="store.auth.otpStage === 'login_with_key'">
           <div class="space-y-2 mt-2">
-            <label class="block text-[11px] font-semibold text-slate-200 mb-1">
+            <label for="auth-existing-key" class="block text-[11px] font-semibold text-slate-200 mb-1">
               Enter your private key
             </label>
             <input
               x-ref="authExistingKey"
+              id="auth-existing-key"
+              name="existingKey"
               type="password"
+              autocomplete="current-password"
               placeholder="Your private key"
               class="rounded-full border border-[#374151] bg-black/70 px-3 py-2 text-[11px] text-slate-100 w-full" />
             <button

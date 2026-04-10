@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const OtpToken = require('../models/OtpToken');
 const { validateEmail } = require('../utils/validators');
+const { sendOtpEmail } = require('../utils/appwriteClient');
 
 // Generate JWT token
 const generateToken = (userId) => {
@@ -178,15 +179,26 @@ router.post('/request-otp', async (req, res) => {
             expiresAt
         });
 
-        // TODO: Integrate with SMS / email providers.
-        // For now, log to server console for testing.
-        console.log(`🔐 OTP for ${identifier}: ${otpCode} (expires in 5 minutes)`);
+        let delivered = false;
+        if (isEmail) {
+            delivered = await sendOtpEmail(identifier, otpCode, purpose);
+        } else {
+            console.log(`🔐 [SMS TODO] OTP for ${identifier}: ${otpCode}`);
+        }
 
-        return res.json({
+        const responseData = {
             success: true,
-            message: 'OTP sent successfully',
-            requestId: otpToken._id
-        });
+            message: delivered ? 'OTP sent to your email' : 'OTP generated (check server logs)',
+            requestId: otpToken._id,
+            channel: isEmail ? 'email' : 'sms'
+        };
+
+        // Return OTP in non-production for testing
+        if (process.env.NODE_ENV !== 'production') {
+            responseData.devOtp = otpCode;
+        }
+
+        return res.json(responseData);
     } catch (error) {
         console.error('❌ OTP request error:', error);
         return res.status(500).json({

@@ -795,7 +795,11 @@ class AppStore {
         this.state.auth.otpStage = 'awaiting_otp';
         this.notify();
 
-        this.showToast('📩 OTP sent. Please check your phone/email.', 'info');
+        // Show dev OTP if returned (non-production mode)
+        if (result.devOtp) {
+            this.showToast(`🔑 Dev OTP: ${result.devOtp}`, 'info');
+        }
+        this.showToast(`📩 OTP sent${result.channel === 'email' ? ' to your email' : ''}. Check your inbox.`, 'success');
         return result;
     }
 
@@ -1174,20 +1178,15 @@ class AppStore {
     
     // ========== Notifications ==========
     showToast(message, type = 'info') {
-        const toast = {
-            id: Date.now(),
-            message,
-            type,
-            visible: true
-        };
-        
-        // Auto-hide after 4 seconds
-        setTimeout(() => {
-            const el = document.querySelector(`[data-toast="${toast.id}"]`);
-            if (el) el.remove();
-        }, 4000);
-        
-        return toast;
+        if (window.Toast) {
+            window.Toast.show(message, type);
+        } else {
+            // Toast not loaded yet — queue it
+            setTimeout(() => {
+                if (window.Toast) window.Toast.show(message, type);
+                else console.log(`[Toast] ${type}: ${message}`);
+            }, 500);
+        }
     }
     
     // ========== Mobile Menu ==========
@@ -1873,12 +1872,7 @@ function appData() {
         },
         
         openSellerModal() {
-            // Guard: becoming a seller requires a verified account.
-            store.requireAuth(
-                'seller-application',
-                'Please sign in to apply as a seller on our marketplace.',
-                () => store.openModal('seller')
-            );
+            store.openModal('seller');
         },
         
         closeSellerModal() {
@@ -2082,8 +2076,10 @@ function appData() {
         
         // Subscribe to store updates
         init() {
-            store.subscribe((newState) => {
-                this.$data.store = newState;
+            store.subscribe(() => {
+                // Spread top-level to create a new reference — this triggers Alpine's
+                // Vue-3-based reactive proxy to re-evaluate all bound expressions.
+                this.$data.store = { ...store.state };
             });
 
             // Start Web Vitals monitoring
