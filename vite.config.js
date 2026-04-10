@@ -2,6 +2,27 @@ import { defineConfig } from 'vite'
 import { resolve } from 'path'
 import { readFileSync, writeFileSync } from 'fs'
 
+// Plugin: inject window.__ENV__ into HTML for dev and build
+function injectEnvPlugin() {
+  return {
+    name: 'inject-env',
+    transformIndexHtml() {
+      const envContent = `
+window.__ENV__ = {
+  VITE_API_URL: ${JSON.stringify(process.env.VITE_API_URL || 'http://localhost:5000/api')},
+  VITE_RAZORPAY_KEY_ID: ${JSON.stringify(process.env.VITE_RAZORPAY_KEY_ID || '')},
+  VITE_EMAILJS_PUBLIC_KEY: ${JSON.stringify(process.env.VITE_EMAILJS_PUBLIC_KEY || process.env.EMAILJS_PUBLIC_KEY || '')},
+  VITE_EMAILJS_SERVICE_ID: ${JSON.stringify(process.env.VITE_EMAILJS_SERVICE_ID || process.env.EMAILJS_SERVICE_ID || '')},
+  VITE_EMAILJS_TEMPLATE_ID: ${JSON.stringify(process.env.VITE_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || '')},
+  VITE_APPWRITE_ENDPOINT: ${JSON.stringify(process.env.VITE_APPWRITE_ENDPOINT || process.env.APPWRITE_ENDPOINT || '')},
+  VITE_APPWRITE_PROJECT_ID: ${JSON.stringify(process.env.VITE_APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || '')},
+};
+`
+      return [{ tag: 'script', attrs: {}, children: envContent, injectTo: 'head-prepend' }]
+    }
+  }
+}
+
 // Plugin: copy plain JS files to dist and substitute import.meta.env references
 function copyPlainJsPlugin() {
   const jsFiles = [
@@ -78,5 +99,5 @@ export default defineConfig({
   preview: {
     port: 4173
   },
-  plugins: [copyPlainJsPlugin()],
+  plugins: [injectEnvPlugin(), copyPlainJsPlugin()],
 })

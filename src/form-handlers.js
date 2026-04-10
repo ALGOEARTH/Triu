@@ -174,7 +174,7 @@ window.handleRazorpayPayment = async function(order, formData) {
 
         // Razorpay options
         const options = {
-            key: import.meta.env?.VITE_RAZORPAY_KEY_ID,
+            key: (window.__ENV__ && window.__ENV__.VITE_RAZORPAY_KEY_ID) || '',
             amount: order.total * 100,
             currency: 'INR',
             name: 'EmproiumVipani',

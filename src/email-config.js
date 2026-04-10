@@ -4,13 +4,11 @@
 // REPLACE THESE 3 VALUES FROM emailjs.com Dashboard
 // ✅ UPDATED email-config.js - ENV-Ready (Static + Vercel/Vite)
 
+const _env = window.__ENV__ || {};
 const EMAILJS_CONFIG = {
-    // Read from environment – no hardcoded fallbacks for security
-    publicKey: import.meta.env?.EMAILJS_PUBLIC_KEY || '',
-    
-    serviceId: import.meta.env?.EMAILJS_SERVICE_ID || '',
-    
-    templateId: import.meta.env?.EMAILJS_TEMPLATE_ID || ''
+    publicKey: _env.VITE_EMAILJS_PUBLIC_KEY || _env.EMAILJS_PUBLIC_KEY || '',
+    serviceId: _env.VITE_EMAILJS_SERVICE_ID || _env.EMAILJS_SERVICE_ID || '',
+    templateId: _env.VITE_EMAILJS_TEMPLATE_ID || _env.EMAILJS_TEMPLATE_ID || ''
 };
 
 // ✅ Validate config (production safety)
