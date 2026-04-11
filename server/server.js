@@ -116,15 +116,24 @@ const distPath = path.join(__dirname, '..', 'dist');
 const srcPath  = path.join(__dirname, '..', 'src');
 const { existsSync } = require('fs');
 
+// Rate limiter for static/SPA routes (separate from /api limiter)
+const staticLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 if (existsSync(distPath)) {
     app.use(express.static(distPath));
-    // Static SPA fallback — covered by the global rate limiter on /api; no extra limiter needed here
-    app.get('*', (req, res, next) => {
+    // SPA fallback — serves the fixed index.html for all non-API client routes
+    app.get('*', staticLimiter, (req, res, next) => {
         if (req.path.startsWith('/api')) return next();
+        // Path is hardcoded — no user input reaches sendFile
         res.sendFile(path.join(distPath, 'index.html'));
     });
 } else if (existsSync(srcPath)) {
-    app.use(express.static(path.join(__dirname, '..')));
+    app.use(staticLimiter, express.static(path.join(__dirname, '..')));
 }
 
 // ── Sentry error handler ─────────────────────────────────────────────────────
