@@ -1,0 +1,16 @@
+[
+  {
+    "id": "915bbd37-e9c9-4883-88ee-06f04b156d6d",
+    "name": "Admin",
+    "email": "admin@triu.com",
+    "phone": "9999999999",
+    "passwordHash": "$2a$10$QbXkWPeQt1O2J.Gj.DkXh.DPnbjDxDUvrusauYU4hcPvfRP/7PoNK",
+    "role": "admin",
+    "status": "active",
+    "createdAt": "2026-04-11T09:45:20.385Z",
+    "updatedAt": "2026-04-11T09:45:20.386Z",
+    "seller": null,
+    "orders": [],
+    "wishlist": []
+  }
+]
