@@ -8,7 +8,8 @@
 const fs   = require('fs');
 const path = require('path');
 
-const DB_DIR = path.join(__dirname, '..', 'db');
+// Allow tests to override DB directory via env var
+const DB_DIR = process.env.TRIU_DB_DIR || path.join(__dirname, '..', 'db');
 
 // Ensure the db directory exists
 if (!fs.existsSync(DB_DIR)) {

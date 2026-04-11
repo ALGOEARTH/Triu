@@ -167,20 +167,20 @@
     "price": 199,
     "mrp": 299,
     "category": "Health & Beauty",
-    "stock": 150,
+    "stock": 149,
     "images": [],
     "thumbnail": "",
     "sellerId": "915bbd37-e9c9-4883-88ee-06f04b156d6d",
     "hsnCode": "3305",
     "countryOfOrigin": "India",
     "status": "active",
-    "sales": 110,
+    "sales": 111,
     "rating": {
       "average": 4.2,
       "count": 63
     },
     "reviews": [],
     "createdAt": "2026-04-11T09:45:49.255Z",
-    "updatedAt": "2026-04-11T09:45:49.255Z"
+    "updatedAt": "2026-04-11T10:08:43.356Z"
   }
 ]

@@ -64,7 +64,7 @@ jobs:
         env:
           NODE_ENV: test
           JWT_SECRET: test-secret-key-for-ci
-          MONGODB_URI: mongodb://localhost:27017/test
+          
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3. BACKEND INTEGRATION TESTS (MongoDB Memory Server)

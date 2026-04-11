@@ -12,5 +12,22 @@
     "timestamp": "2026-04-11T10:01:46.913Z",
     "createdAt": "2026-04-11T10:01:46.913Z",
     "updatedAt": "2026-04-11T10:01:46.913Z"
+  },
+  {
+    "id": "299b550a-1c8e-4748-9d5c-b6dc748b40f2",
+    "eventId": "8695fe26-3830-441f-a838-22375cbac896",
+    "topic": "seller.onboarded",
+    "partition": 0,
+    "offset": 1,
+    "key": null,
+    "value": {
+      "userId": "3fbe8ba1-7263-48b2-a262-a896538b79cf",
+      "businessName": "Test Shop",
+      "gstNumber": "29ABCDE1234F1Z5",
+      "status": "pending"
+    },
+    "timestamp": "2026-04-11T10:09:05.763Z",
+    "createdAt": "2026-04-11T10:09:05.764Z",
+    "updatedAt": "2026-04-11T10:09:05.764Z"
   }
 ]

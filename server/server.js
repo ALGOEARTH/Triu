@@ -173,4 +173,6 @@ process.on('SIGTERM', () => {
     server.close(() => { console.log('✅ Server closed'); process.exit(0); });
 });
 
+// Expose server handle so integration tests can close it cleanly
+app._server = server;
 module.exports = app;
