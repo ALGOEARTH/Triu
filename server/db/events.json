@@ -1,0 +1,16 @@
+[
+  {
+    "id": "54be79d1-5d8d-40a5-8051-c9f051cd8a24",
+    "eventId": "d340b016-1101-4ed1-9f9c-69aef4df0a0a",
+    "topic": "test.topic",
+    "partition": 0,
+    "offset": 0,
+    "key": null,
+    "value": {
+      "test": true
+    },
+    "timestamp": "2026-04-11T10:01:46.913Z",
+    "createdAt": "2026-04-11T10:01:46.913Z",
+    "updatedAt": "2026-04-11T10:01:46.913Z"
+  }
+]
