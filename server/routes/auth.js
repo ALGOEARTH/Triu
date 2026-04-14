@@ -1,20 +1,42 @@
 const express  = require('express');
 const router   = express.Router();
-const jwt      = require('jsonwebtoken');
 const bcrypt   = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
 const db       = require('../utils/jsonDB');
-const { validateEmail } = require('../utils/validators');
+const { validateEmail }   = require('../utils/validators');
+const { sendOtpEmail }    = require('../utils/emailService');
 
-// ── Token helper ─────────────────────────────────────────────────────────────
-function generateToken(userId) {
-    return jwt.sign({ userId }, process.env.JWT_SECRET || 'dev-secret-change-me', {
-        expiresIn: process.env.JWT_EXPIRE || '7d',
-    });
+// ── Session helpers ───────────────────────────────────────────────────────────
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/**
+ * Create a new session record and return the token (UUID).
+ * The token is stored as-is in sessions.json — no JWT, no signing.
+ */
+function createSession(userId, role) {
+    const token     = uuidv4();
+    const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+    db.create('sessions', { token, userId, role, expiresAt });
+    return { token, expiresAt };
+}
+
+/**
+ * Purge expired sessions (best-effort housekeeping).
+ */
+function purgeExpiredSessions() {
+    try {
+        db.deleteWhere('sessions', s => new Date(s.expiresAt) < new Date());
+    } catch { /* non-critical */ }
 }
 
 function safeUser(user) {
-    const { passwordHash, ...rest } = user;
+    const { passwordHash, keyHash, ...rest } = user;
     return rest;
+}
+
+// ── OTP helper ────────────────────────────────────────────────────────────────
+function generateOtp() {
+    return String(Math.floor(100_000 + Math.random() * 900_000));
 }
 
 // ============================================
