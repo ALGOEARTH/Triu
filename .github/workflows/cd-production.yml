@@ -68,7 +68,7 @@ jobs:
           VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.PRODUCTION_EMAILJS_TEMPLATE_ID }}
 
       - name: Setup GitHub Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
