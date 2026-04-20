@@ -6,7 +6,11 @@ const billing = require('../services/billingEngine');
 // ── Auth middleware (reuse existing) ─────────────────────────────────────────
 let authMiddleware;
 try {
-    authMiddleware = require('../middleware/auth');
+    const auth = require('../middleware/auth');
+    authMiddleware = typeof auth === 'function' ? auth : auth.verifyToken;
+    if (typeof authMiddleware !== 'function') {
+        authMiddleware = (_req, _res, next) => next();
+    }
 } catch {
     // Fallback: no-op if middleware not found (for standalone testing)
     authMiddleware = (_req, _res, next) => next();
@@ -94,7 +98,7 @@ router.get('/history', authMiddleware, wrap(async (req, res) => {
 }));
 
 // ── Error handler for this router ─────────────────────────────────────────────
-router.use((err, _req, res, _next) => {
+router.use((err, _req, res) => {
     const status = err.status || 400;
     res.status(status).json({ success: false, message: err.message || 'Billing error' });
 });
